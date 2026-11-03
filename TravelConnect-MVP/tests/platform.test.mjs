@@ -7,6 +7,9 @@ import {randomUUID} from 'node:crypto';
 
 const temp = mkdtempSync(path.join(os.tmpdir(),'travelconnect-integration-'));
 process.env.TC_DATA_DIR=temp;
+// Test the guest/password workflow with Firebase intentionally unconfigured.
+process.env.TC_FIREBASE_USE_ENV='1';
+for(const key of ['TC_FIREBASE_PROJECT_ID','TC_FIREBASE_API_KEY','TC_FIREBASE_AUTH_DOMAIN','TC_FIREBASE_APP_ID'])delete process.env[key];
 const [{createServer},{db},{passwordRecord},{randomUUID:unused}] = await Promise.all([
  import('../scripts/dev.mjs'), import('../server/db.mjs'), import('../server/security.mjs'), import('node:crypto')
 ]);
