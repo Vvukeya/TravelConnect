@@ -19,3 +19,6 @@ jobs:
         run: npm run check
       - name: API and frontend regression tests
         run: npm test
+      - name: Firebase project public configuration preflight
+        run: npm run firebase:check
+        continue-on-error: true
