@@ -40,7 +40,8 @@ test('TravelConnect frontend renders live authenticated and guest routes without
  assert.match(show('weather'),/Get real forecast/);
  const user={id:'u',role:'passenger',name:'Passenger',email:'test@example.com',phone:'',driver_status:'none'};
  assert.match(show('profile',`currentUser=${JSON.stringify(user)};`),/Account settings/);
- assert.match(show('driver'),/Driver application/);
+ assert.match(show('driver'),/Register your vehicle/);
+ assert.match(show('driver'),/car-photo-file/);
  assert.match(show('trips'),/No journeys yet/);
  const d={...user,role:'driver',driver_status:'approved',vehicle:'Toyota Corolla'};
  assert.match(show('driver',`currentUser=${JSON.stringify(d)};`),/Publish a journey/);
