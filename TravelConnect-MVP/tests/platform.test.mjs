@@ -24,6 +24,8 @@ async function call(client,endpoint,method='GET',body){
 }
 const in3days = new Date(Date.now()+3*86400000).toLocaleDateString('en-CA',{timeZone:'Africa/Johannesburg',year:'numeric',month:'2-digit',day:'2-digit'});
 const tripInput={from:'Johannesburg',to:'Durban',date:in3days,depart:'08:00',price:350,seats:3,vehicle:'Toyota Corolla',pickup:'Park Station',dropoff:'Durban CBD'};
+const carPhoto='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9dMTf0IAAAAASUVORK5CYII=';
+const vehicleApplication={vehicleMake:'Toyota',vehicleModel:'Corolla',vehicleYear:2022,vehicleColor:'Silver',vehicleSeats:3,vehiclePlate:'CA 12345',vehiclePhoto:carPhoto};
 test('TravelConnect integration: real accounts, permissions, seats, cancellations, messaging and persistence',async t=>{
  await t.test('health and static frontend',async()=>{
   assert.equal((await call('guest','/health')).status,200);
@@ -43,7 +45,11 @@ test('TravelConnect integration: real accounts, permissions, seats, cancellation
  });
  await t.test('driver application and role-based manual approval',async()=>{
   assert.equal((await call('driver','/driver/trips','POST',tripInput)).status,403);
-  assert.equal((await call('driver','/driver/apply','POST',{vehicle:'Toyota Corolla'})).status,200);
+  assert.equal((await call('driver','/driver/apply','POST',{...vehicleApplication,vehiclePhoto:'data:text/html;base64,PHNjcmlwdD4='})).status,400);
+  const application=await call('driver','/driver/apply','POST',vehicleApplication);assert.equal(application.status,200);assert.equal(application.user.vehicle_make,'Toyota');assert.equal(application.user.hasVehiclePhoto,true);
+  const driverId=application.user.id;
+  const privatePhoto=await fetch(root+'/api/v1/drivers/'+driverId+'/vehicle-photo');assert.equal(privatePhoto.status,403);
+  const ownerPhoto=await fetch(root+'/api/v1/drivers/'+driverId+'/vehicle-photo',{headers:{Cookie:clients.driver}});assert.equal(ownerPhoto.status,200);assert.equal(ownerPhoto.headers.get('content-type'),'image/png');
   assert.equal((await call('driver','/driver/trips','POST',tripInput)).status,403);
   assert.equal((await call('passenger','/admin/stats')).status,403);
   assert.equal((await call('passenger','/admin/overview')).status,403);
@@ -51,6 +57,7 @@ test('TravelConnect integration: real accounts, permissions, seats, cancellation
   db.prepare("INSERT INTO users(id,name,email,password_salt,password_hash,role,created_at) VALUES(?,?,?,?,?,'admin',?)").run(id,'Admin One','admin@example.test',salt.salt,salt.hash,new Date().toISOString());
   const login=await call('admin','/auth/login','POST',{email:'admin@example.test',password:'verylongadminpassword!'});assert.equal(login.status,200);
   const reqs=await call('admin','/admin/drivers');assert.equal(reqs.data.length,1);
+  assert.equal(reqs.data[0].vehicle_color,'Silver');assert.equal(reqs.data[0].vehicle_photo_mime,'image/png');
   const ov=await call('admin','/admin/overview');assert.equal(ov.status,200);assert.ok(ov.data.stats.users>=4);assert.equal(ov.data.stats.driversPending,1);assert.ok(Array.isArray(ov.data.recentActivity));
   assert.equal((await call('admin',`/admin/drivers/${reqs.data[0].id}/approve`,'POST',{})).status,200);
   assert.equal((await call('driver','/auth/me')).user.driver_status,'approved');
@@ -58,6 +65,8 @@ test('TravelConnect integration: real accounts, permissions, seats, cancellation
  let tripId,bookingA,bookingB;
  await t.test('real published trip is visible to everyone and can be booked',async()=>{
   const created=await call('driver','/driver/trips','POST',tripInput);assert.equal(created.status,201);tripId=created.data.id;
+  assert.match(created.data.vehiclePhotoUrl,/vehicle-photo$/);
+  const publicPhoto=await fetch(root+created.data.vehiclePhotoUrl);assert.equal(publicPhoto.status,200);assert.equal(publicPhoto.headers.get('content-type'),'image/png');
   assert.equal((await call('guest','/trips?from=Johannesburg&to=Durban')).data.length,1);
   assert.equal((await call('guest','/trips?from=Cape%20Town')).data.length,0);
   assert.equal((await call('driver','/bookings','POST',{tripId,seats:1,requestId:randomUUID()})).status,400);
