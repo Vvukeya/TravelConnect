@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en-ZA">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#102345" />
+  <meta name="description" content="TravelConnect — find long-distance journeys, discover drivers and travel together." />
+  <meta name="color-scheme" content="light" />
+  <title>TravelConnect — Every Journey Connects Us</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./assets/logo.svg" />
+  <link rel="apple-touch-icon" href="./assets/icon-192.png" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="demo-ribbon" role="status"><span class="demo-dot"></span> TravelConnect early-access preview <span class="demo-hide">— sample trips, no payments or live tracking</span></div>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a href="#home" class="brand" aria-label="TravelConnect home" data-nav="home">
+        <span class="brand-symbol" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none"><path d="M8 25 19 13l6 6 7-8" stroke="white" stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="30" cy="11" r="3.8" fill="#9BF8E8"/><circle cx="9" cy="26" r="3.5" fill="#9BF8E8"/></svg></span>
+        <span>travel<span class="brand-strong">connect</span></span>
+      </a>
+      <nav class="desktop-nav" aria-label="Main navigation">
+        <a href="#home" data-nav="home">Explore</a>
+        <a href="#search" data-nav="search">Find rides</a>
+        <a href="#trips" data-nav="trips">My trips</a>
+        <a href="#assistant" data-nav="assistant">TripAI <span class="mini-star">✦</span></a>
+        <a href="#driver" data-nav="driver">Drive</a>
+      </nav>
+      <div class="header-actions">
+        <button class="button subtle small" data-action="install" id="install-btn" hidden>Install app</button>
+        <button class="avatar-btn" data-nav="profile" aria-label="Account profile"><span id="header-initials">G</span></button>
+      </div>
+    </div>
+  </header>
+  <main id="main" tabindex="-1"><div id="app" aria-live="polite"></div></main>
+  <nav class="mobile-tabs" aria-label="Mobile navigation">
+    <a href="#home" data-nav="home"><span class="tab-icon">⌂</span><span>Explore</span></a>
+    <a href="#search" data-nav="search"><span class="tab-icon">⌕</span><span>Find rides</span></a>
+    <a href="#trips" data-nav="trips"><span class="tab-icon">▣</span><span>My trips</span></a>
+    <a href="#assistant" data-nav="assistant"><span class="tab-icon">✦</span><span>TripAI</span></a>
+    <a href="#driver" data-nav="driver"><span class="tab-icon">◈</span><span>Drive</span></a>
+  </nav>
+  <footer class="site-footer"><div class="container footer-row"><span>© <span id="year"></span> TravelConnect. Every Journey Connects Us.</span><span>Early-access prototype · Built for South Africa</span></div></footer>
+  <div class="toast" id="toast" aria-live="polite" role="status"></div>
+  <script src="./config.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

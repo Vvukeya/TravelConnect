@@ -1,0 +1,13 @@
+{
+  "name": "travelconnect",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "TravelConnect responsive website and installable PWA MVP",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "start": "node scripts/dev.mjs",
+    "check": "node --check web/app.js && node --check scripts/dev.mjs"
+  },
+  "engines": {"node": ">=18"}
+}

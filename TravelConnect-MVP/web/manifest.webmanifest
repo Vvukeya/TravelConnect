@@ -1,0 +1,16 @@
+{
+  "name": "TravelConnect — Every Journey Connects Us",
+  "short_name": "TravelConnect",
+  "description": "Find long-distance journeys and plan travel together",
+  "id": "./",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F6F8FC",
+  "theme_color": "#102345",
+  "lang": "en-ZA",
+  "icons": [
+    {"src":"./assets/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"./assets/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}
