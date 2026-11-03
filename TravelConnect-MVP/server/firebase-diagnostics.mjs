@@ -18,8 +18,10 @@ export async function inspectFirebase({projectId='',apiKey='',authDomain='',appI
  const issues=[];
  if(!projectId||!apiKey||!authDomain||!appId) return {status:'incomplete',ready:false,projectId:short(projectId),hostname:short(hostname),issues:['Firebase Web app config is incomplete. Set the five TC_FIREBASE_* values in .env and restart the server.'],provider:'unverified'};
  const expected=`${projectId}.firebaseapp.com`;
- if(authDomain!==expected && authDomain!==`${projectId}.web.app` && !authDomain.endsWith('.firebaseapp.com')) {
-  issues.push('The Firebase authDomain differs from the usual project domain. Check it against Firebase → Project settings → Your apps.');
+ if(authDomain.endsWith('.firebaseapp.com') && authDomain!==expected){
+  issues.push(`The authDomain "${short(authDomain)}" does not match your configured project. Copy the authDomain from Firebase Project settings → Your apps.`);
+ } else if(authDomain!==expected && authDomain!==`${projectId}.web.app`) {
+  issues.push('Custom authDomain detected. Confirm it is registered in your Firebase project and is authorized for OAuth.');
  }
  let response;
  try {response=await fetchImpl(`${endpoint}?key=${encodeURIComponent(apiKey)}`,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(7000)});}
@@ -31,11 +33,11 @@ export async function inspectFirebase({projectId='',apiKey='',authDomain='',appI
   return {status:'rejected',ready:false,projectId:short(projectId),hostname:short(hostname),issues:[...issues,hint],provider:'unverified'};
  }
  const actual=payload.projectId||payload.project_id||'';
- if(actual && actual!==projectId)issues.push('The API key belongs to a different Firebase project than TC_FIREBASE_PROJECT_ID.');
+ if(actual && actual!==projectId)issues.push(`Firebase Web API key belongs to project "${short(actual)}" but TC_FIREBASE_PROJECT_ID is "${short(projectId)}". Copy all five TC_FIREBASE_* values from the SAME Web app in Firebase Project settings → General → Your apps.`);
  const domains=Array.isArray(payload.authorizedDomains)?payload.authorizedDomains:[];
  if(domains.length && !domains.includes(hostname))issues.push(`The current domain (${short(hostname)}) is not authorized. Firebase → Authentication → Settings → Authorized domains → Add domain.`);
  if(domains.length && !domains.includes(authDomain))issues.push('The authDomain is missing from Firebase Authorized domains. Verify Firebase project setup.');
- const fatal=issues.some(m=>/different Firebase project|not authorized|authDomain is missing/.test(m));
+ const fatal=issues.some(m=>/Firebase Web API key belongs|does not match your configured project|not authorized|authDomain is missing/.test(m));
  return {status:fatal?'action-required':issues.length?'warning':'ready',ready:!fatal,projectId:short(projectId),hostname:short(hostname),issues,authorizedDomainCheck:domains.length?(domains.includes(hostname)?'allowed':'blocked'):'unavailable',provider:'unverified',help:'Also enable Google in Firebase Authentication → Sign-in method. Browser OAuth must be tested with a real Google account.'};
 }
 const CACHE_MS=120000;
