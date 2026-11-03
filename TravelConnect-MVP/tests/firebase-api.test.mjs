@@ -7,6 +7,7 @@ import {generateKeyPairSync,sign} from 'node:crypto';
 
 const temp=mkdtempSync(path.join(os.tmpdir(),'travelconnect-firebase-'));
 process.env.TC_DATA_DIR=temp;
+process.env.TC_FIREBASE_USE_ENV='1';
 process.env.TC_FIREBASE_PROJECT_ID='travelconnect-test';
 process.env.TC_FIREBASE_API_KEY='firebase-public-web-key';
 process.env.TC_FIREBASE_AUTH_DOMAIN='travelconnect-test.firebaseapp.com';
