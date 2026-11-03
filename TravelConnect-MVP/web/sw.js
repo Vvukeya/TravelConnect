@@ -1,5 +1,5 @@
-const CACHE = 'travelconnect-polished-v7-clean';
-const ASSETS = ['./','./index.html','./styles.css','./premium.css','./sunset.css','./app.js','./config.js','./manifest.webmanifest','./assets/google-g.svg','./assets/travelconnect-48.png','./assets/travelconnect-180.png','./assets/icon-maskable-512.png','./assets/icon-192.png','./assets/icon-512.png'];
+const CACHE = 'travelconnect-vehicle-v8';
+const ASSETS = ['./','./index.html','./styles.css','./premium.css','./sunset.css','./app.js','./vehicle-photo.js','./config.js','./manifest.webmanifest','./assets/google-g.svg','./assets/travelconnect-48.png','./assets/travelconnect-180.png','./assets/icon-maskable-512.png','./assets/icon-192.png','./assets/icon-512.png'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))])));
 self.addEventListener('fetch', event => {
