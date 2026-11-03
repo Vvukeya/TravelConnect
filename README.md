@@ -64,31 +64,19 @@ Use an email address you control. Do not share the password. The admin account i
 
 ## Google sign-in (Firebase Authentication)
 
-1. Open [Firebase Console](https://console.firebase.google.com/), select the **same project** for all Web app configuration values.
-2. Under **Authentication → Sign-in method**, enable **Google**.
-3. Under **Authentication → Settings → Authorized domains**, authorize `localhost` for development and your future HTTPS domain when hosted.
-4. Under **Project settings → General → Your apps**, open the Web app configuration.
-5. Set the values in `TravelConnect-MVP/.env`:
+The public Firebase Web app configuration for **`travelconnect-f359e`** is already included in [the backend configuration](TravelConnect-MVP/server/firebase-public-config.mjs), and is used by both the browser and the token verifier. **No Firebase npm install or manual key copying is needed for the default project.** Your old local `.env` Firebase settings are ignored by default to avoid project/key mismatches.
 
-```dotenv
-TC_FIREBASE_PROJECT_ID=
-TC_FIREBASE_API_KEY=
-TC_FIREBASE_AUTH_DOMAIN=
-TC_FIREBASE_APP_ID=
-TC_FIREBASE_MESSAGING_SENDER_ID=
-```
-
-**Important:** Do not mix an API key from one Firebase project with the project ID from another. The app has already detected that mismatch during your setup. Copy all five values from **one registered Firebase Web app**, restart the server, and test in a normal Chrome tab.
+To activate live Google sign-in, open [Firebase Console](https://console.firebase.google.com/), select `travelconnect-f359e`, enable **Authentication → Sign-in method → Google**, then authorize **`localhost`** under **Authentication → Settings → Authorized domains**.
 
 ```bash
+cd TravelConnect-MVP
 npm run firebase:check
-npm run doctor
 npm run dev
 ```
 
-Google login is not verified live until it succeeds with your own Firebase settings. New Google accounts begin as passengers. Existing accounts must link their matching Google identity after password sign-in; email matching by itself must not grant access.
+Test at `http://localhost:5500/#auth` in Chrome. A real browser login still must be verified. Existing accounts can link their matching Google identity only after signing in normally; Google email matching never grants administrator access.
 
-More help: [Google sign-in troubleshooting](TravelConnect-MVP/GOOGLE_SIGNIN_FIX.md) and [Firebase setup](TravelConnect-MVP/FIREBASE_SETUP.md).
+See [the Google sign-in repair guide](TravelConnect-MVP/GOOGLE_SIGNIN_FIX.md). To deliberately switch to another Firebase project, configure all five matching `TC_FIREBASE_*` values in your private `.env` and set `TC_FIREBASE_USE_ENV=1`.
 
 ## TripAI — free local model
 
