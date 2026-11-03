@@ -1,8 +1,8 @@
-# TravelConnect — database-backed website and installable PWA (v0.2)
+# TravelConnect — Website, PWA, SQLite database and weather API (v0.3)
 
 **Every Journey Connects Us.** This is a **working, locally testable multi-user foundation** for a South African journey-sharing platform. It is **NOT ready to accept paying passengers or support real-world safety operations** yet. Read [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md) before hosting for public use.
 
-## What really works in v0.2
+## What really works in v0.3
 
 - Users can **register, sign in, sign out and edit their profiles**. Passwords are salted and hashed with `scrypt`. Login uses opaque, server-side sessions in HttpOnly cookies.
 - Passengers can see **real journeys published to the shared database**, book available seats, view bookings from other devices and cancel upcoming reservations.
@@ -13,7 +13,38 @@
 - The PWA and responsive website use the same backend over same-origin `/api/v1` REST endpoints. Accounts, trips and bookings persist in the SQLite database file instead of a browser's localStorage.
 - Automated tests cover authentication, roles, publication, inventory, cancellation, idempotency, message permissions, security headers and frontend route rendering.
 
-**Not included:** real payment processing, live GPS, professional document verification, weather feeds, third-party TripAI, Google sign-in, email/phone verification, password recovery, emergency dispatch, push notifications, trusted-contact sharing and legal compliance certification. Those require real providers, credentials, user consent, and production validation. No money is collected; reservation fares are displayed only.
+**Not included:** real payment processing, live GPS, professional document verification, always-on TripAI (requires your own API key), Google sign-in, email/phone verification, password recovery, emergency dispatch, push notifications, trusted-contact sharing and legal compliance certification. Those require real providers, credentials, user consent, and production validation. No money is collected; reservation fares are displayed only.
+
+## What is new in v0.3
+
+- Completely redesigned **administrator workspace** with desktop sidebar, mobile layout, real database metrics, pending driver reviews, recent bookings, journey inventory and audit event summaries.
+- New **Weather** tab and journey forecast cards calling the server-side `/api/v1/weather` endpoint. This checks real Open-Meteo forecasts; no dummy temperatures are returned.
+- Optional server-side **TripAI OpenAI Responses API** via `TC_OPENAI_API_KEY`, with authentication, rate limiting, a narrow travel-planning prompt and explicit provider-error feedback. Without a key, rules-based preview remains visible and labelled.
+- Forecasts show daily high, low, precipitation probability, conditions and data attribution. Fixed city coordinates are used; no personal GPS data is collected.
+- Cache is shared across users for 15 minutes to reduce provider requests. Requests time out cleanly if the provider is offline. Weather is informational only—not a road hazard alert.
+- Google Maps *directions link* from journey details and booking journey screen. This opens map directions in a new tab; it is **not** a connected vehicle tracker.
+- Database backups using `npm run db:backup` to make a consistent snapshot into the ignored `data/backups/` directory.
+- Expanded automated tests, refreshed visual styles, mobile responsive administration and improved early-access messaging.
+
+### Commercial weather API licensing
+
+Open-Meteo’s free public API is for **non-commercial evaluation only**. Locally, weather checks use this API for development. When you set `NODE_ENV=production`, the weather endpoint **requires** `TC_OPEN_METEO_KEY`, the paid/commercial Open-Meteo credential, and uses `customer-api.open-meteo.com`. Obtain a commercial plan first: https://open-meteo.com/en/pricing. Do not deploy the free public endpoint commercially. Preserve the displayed provider attribution.
+
+### Optional live TripAI
+
+The project can call the official **OpenAI Responses API** from the backend after you configure your own API key. API usage is **separately billed** and is not included in a ChatGPT subscription. **Never place your key inside the website, GitHub, a screenshot, or a message to support.**
+
+For local macOS Terminal (do not paste the actual secret into chat):
+
+```bash
+cd ~/TravelConnect/TravelConnect-MVP
+read -s 'TC_OPENAI_API_KEY?Paste your secret API key: '
+export TC_OPENAI_API_KEY
+export TC_AI_MODEL='gpt-6-luna'
+npm run dev
+```
+
+TripAI changes to live server-side replies when the key is present; it requires a signed-in TravelConnect account. The model name can be changed to one enabled in your own API project using `TC_AI_MODEL`. If an API request fails, the app shows an error rather than fake output. The server sends user questions to OpenAI, so users must be informed through a published privacy notice before public use. Official docs: https://platform.openai.com/docs/api-reference/responses.
 
 ## 1. Run it in VS Code on your Mac
 
@@ -27,6 +58,7 @@ cd ~/TravelConnect/TravelConnect-MVP
 node -v
 npm run check
 npm test
+npm run db:backup    # optional, before making major changes
 npm run dev
 ```
 
@@ -67,7 +99,27 @@ Open a normal and an incognito browser window to simulate separate people:
 
 Public journeys **start empty**. This is intentional: the app will not invent live drivers, trips, ratings or availability. The original screenshot/demo data has been removed from the online reservation list.
 
-## 4. Where data lives
+## 4. Weather and database APIs
+
+Core REST APIs include `/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/trips`, `/api/v1/bookings`, `/api/v1/driver/trips`, `/api/v1/admin/overview`, `/api/v1/admin/drivers`, `/api/v1/ai/status`, `/api/v1/ai/ask`, and `/api/v1/trips/:id/messages`. These work with persisted database records.
+
+Example weather request after starting the server:
+
+```bash
+curl 'http://127.0.0.1:5500/api/v1/weather?city=Durban'
+```
+
+This fetches a **real model forecast** using Open-Meteo, or returns an explicit error if weather is unavailable. A live internet connection is required; forecasts are limited to dates returned by the provider. On a commercial hosted deployment, set `TC_OPEN_METEO_KEY` through a secure host environment variable, never in `web/config.js` or GitHub.
+
+### Back up the database
+
+```bash
+npm run db:backup
+```
+
+The backup remains **on your Mac**, not GitHub. Copy it securely to offsite storage and practise restores before hosting real customer accounts. Database backups may contain sensitive user data; do not share them publicly.
+
+## 5. Where data lives
 
 SQLite file (default):
 
@@ -79,7 +131,7 @@ This path is excluded from GitHub through `.gitignore`. Do not delete it if you 
 
 The app uses SQLite transactions and WAL mode. It is appropriate for a single-server initial pilot, not a high-scale multi-replica production setup. The project master specification targets **Laravel/PHP + MySQL**. That migration is **not implemented** in v0.2; the older `backend-overlay/` remains as reference-only starter files and does not serve the current frontend.
 
-## 5. Hosting later — not public launch-ready
+## 6. Hosting later — not public launch-ready
 
 This build must run on a host that supports **Node.js 22.13 or newer**, persistent writable storage, HTTPS and environment variables. Do **not** use a static-only hosting service for this database-backed version. It will not work if you only upload `web/` to GitHub Pages.
 
@@ -91,7 +143,7 @@ HOST=0.0.0.0 PORT=8080 TC_DATA_DIR=/path/to/persistent/disk node scripts/dev.mjs
 
 Configure the proxy to preserve `Host` and terminate TLS; only set `TRUST_PROXY=1` if the proxy is under your control and sanitises `X-Forwarded-Proto`. Secure cookies are set on HTTPS connections. Set up **daily database backups**, monitoring and a recovery plan before accepting users. Do not publicly expose this test server or use genuine passenger data until launch requirements are met.
 
-## 6. GitHub workflow
+## 7. GitHub workflow
 
 Your existing repository is [Vvukeya/TravelConnect](https://github.com/Vvukeya/TravelConnect) and it already has a `TravelConnect-MVP` folder. **Do not run `git init` again.** Extract the updated ZIP *at the repository root*, replacing `TravelConnect-MVP` files. Then:
 
@@ -108,9 +160,11 @@ git push origin main
 
 Your actual database, passwords, credentials and `.env` files will remain ignored by Git. Check the `git status` output before pushing.
 
-## 7. Security notes
+## 8. Security notes
 
 The server includes password hashing, account roles, server sessions, SQL parameter binding, transactional inventory, API input limits, same-origin write checks and basic per-IP throttling. This is a foundation, **not a substitute for an independent penetration test or deployment security review**. See the launch checklist for password recovery, email verification, moderation, rate limits across multiple servers, audit logging, provider integration and privacy requirements.
+
+See [API_REFERENCE.md](API_REFERENCE.md) for specific REST endpoints and test status.
 
 ## Design reference
 

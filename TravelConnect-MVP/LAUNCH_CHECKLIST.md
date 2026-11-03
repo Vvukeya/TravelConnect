@@ -1,8 +1,8 @@
 # TravelConnect production launch checklist
 
-**Status as of 3 November 2026:** Technical foundation built and API tests passing. **Not yet ready for public real-world bookings or payment collection.** This checklist reflects the original TravelConnect vision but distinguishes implemented from outstanding work.
+**Status as of 3 November 2026:** Database-backed platform, redesigned admin, forecast integration and API tests passing. **Not yet ready for public real-world bookings or payment collection.** This checklist reflects the original TravelConnect vision but distinguishes implemented from outstanding work.
 
-## Implemented and automatically tested (v0.2)
+## Implemented and automatically tested (v0.3)
 
 - [x] Responsive website and installable PWA shell.
 - [x] User account registration and login with password hashing and HttpOnly session cookies.
@@ -15,6 +15,11 @@
 - [x] Server-stored messages restricted to booked travellers and the relevant driver (manual refresh).
 - [x] Basic administrator statistics and manual application review dashboard.
 - [x] Automated server API tests and frontend route-render tests.
+- [x] Admin overview with audit feed, recent reservations and journey inventory (same local database).
+- [x] Weather forecast adapter with caching, input validation and mocked provider tests; production requires licensed paid Open-Meteo API key.
+- [x] Optional authenticated, rate-limited OpenAI Responses API adapter; remains disabled until a server-side secret key is set and production QA is completed.
+- [x] Optional Google Maps navigation link (does not track a driver).
+- [x] Local SQLite snapshot backup command (`npm run db:backup`).
 
 ## Mandatory before a public commercial launch
 
@@ -26,7 +31,7 @@
 - [ ] **POPIA compliance.** Privacy policy, lawful basis/consents, data minimisation, retention/deletion workflows, contact-data safeguards, breach-response procedures and cross-border processor agreements if applicable.
 - [ ] **GPS and safety tools.** Explicit trip-scoped consent, access control, precise geolocation, time-limited trusted-contact sharing, accuracy warnings, revocation and independently tested SOS/escalation workflows. Never depict a simulated map as a live safety service.
 - [ ] **Reliable notifications.** Transactional email/SMS/push for booking status, cancellations, changes and driver communications; escalation when operators cancel booked trips.
-- [ ] **Real TripAI and weather.** Server-side API credentials, privacy-conscious prompting, verifiable source timestamps, rate limits, model cost controls, warnings and failure handling. The current TripAI UI is a clearly labelled deterministic demonstration.
+- [ ] **Licensed weather API and live TripAI go-live controls.** The weather adapter requires a licensed commercial Open-Meteo key on production. Live TripAI adapter requires an OpenAI key, agreed provider privacy terms, token-spend limits, source validation, content safety review and production QA. With no key, TripAI stays rules-based.
 - [ ] **Abuse & fraud controls.** Report/block users, content moderation, admin account protection (MFA), audit review, account suspension, distributed rate limiting and CAPTCHA when necessary.
 - [ ] **Trip and booking lifecycle.** Refunds, cancellations by a driver with existing reservations, missed departures, seat disputes, no-shows, schedule updates, travel support and rider/driver ratings.
 - [ ] **App accessibility and quality.** Keyboard/screen-reader checks, mobile device validation, multi-browser testing, low-bandwidth testing, end-to-end UI automation, data migration tests and load/concurrency tests on target infrastructure.

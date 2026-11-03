@@ -1,5 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {db, transaction, audit} from './db.mjs';
+import {weatherService} from './weather.mjs';
+import {aiService} from './ai.mjs';
 import {ApiError,iso,must,safeString,normalizeEmail,validName,validPassword,integer,validateDate,validateTime,passwordRecord,passwordValid,hashToken,randomToken,parseCookies,uuid,nowJohannesburg} from './security.mjs';
 
 const USER_FIELDS='id,name,email,phone,role,driver_status,vehicle,created_at';
@@ -31,7 +33,13 @@ function checkTripPublishStatus(user){role(user,['driver']);must(user.driver_sta
 export async function api(req,res,url){const method=req.method||'GET',pathname=url.pathname;
  if(!pathname.startsWith('/api/v1/'))return false;
  try{
-  if(method==='GET'&&pathname==='/api/v1/health')return send(res,200,{ok:true,service:'TravelConnect',database:'connected',version:'0.2.0'});
+  if(method==='GET'&&pathname==='/api/v1/health')return send(res,200,{ok:true,service:'TravelConnect',database:'connected',version:'0.3.0'});
+  if(method==='GET'&&pathname==='/api/v1/weather'){
+   throttle(req,'weather',90,60*60*1000);
+   const city=safeString(url.searchParams.get('city'),80);
+   const date=safeString(url.searchParams.get('date'),16);
+   try{return send(res,200,{data:await weatherService.get(city,date||undefined)});}catch(error){throw new ApiError(error.status||503,error.status&&error.status<500?error.message:'Weather is temporarily unavailable. Please try again later.');}
+  }
   if(method==='GET'&&pathname==='/api/v1/trips'){
    const now=nowJohannesburg();const where=["t.status='published'","t.seats_left>0","u.driver_status='approved'","(t.date > ? OR (t.date = ? AND t.depart > ?))"];const params=[now.date,now.date,now.time];
    for(const [param,col] of [['from','t.from_city'],['to','t.to_city'],['date','t.date']]){const val=safeString(url.searchParams.get(param),80);if(val){where.push(`${col}=?`);params.push(val)}}
@@ -43,8 +51,13 @@ export async function api(req,res,url){const method=req.method||'GET',pathname=u
   if(method==='GET'&&tripDetail){const row=one(`${TRIP_QUERY} WHERE t.id=? AND t.status='published' AND u.driver_status='approved'`,tripDetail[1]);must(row,'Journey not found',404);return send(res,200,{data:rawTrip(row)})}
   const user=userFor(req);
   if(method==='GET'&&pathname==='/api/v1/auth/me')return send(res,200,{user:redact(user)});
+  if(method==='GET'&&pathname==='/api/v1/ai/status')return send(res,200,{enabled:aiService.enabled,provider:aiService.enabled?'OpenAI':null});
   if(['POST','PATCH','PUT','DELETE'].includes(method))requireSameOrigin(req);
   const data=['POST','PATCH','PUT'].includes(method)?await bodyJSON(req):{};
+  if(method==='POST'&&pathname==='/api/v1/ai/ask'){
+   auth(user);throttle(req,'ai',12,10*60*1000);
+   try{return send(res,200,{data:await aiService.ask(data.question)});}catch(error){throw new ApiError(error.status||503,error.message);}
+  }
   if(method==='POST'&&pathname==='/api/v1/auth/register'){
    throttle(req,'register',7,60*60*1000);
    const email=normalizeEmail(data.email), name=validName(data.name),pwd=validPassword(data.password);
@@ -124,6 +137,22 @@ export async function api(req,res,url){const method=req.method||'GET',pathname=u
   }
   if(method==='GET'&&pathname==='/api/v1/admin/stats'){
    role(user,['admin']);return send(res,200,{data:{users:one('SELECT count(*) AS n FROM users').n,driversPending:one("SELECT count(*) AS n FROM users WHERE driver_status='pending'").n,tripsPublished:one("SELECT count(*) AS n FROM trips WHERE status='published'").n,bookingsReserved:one("SELECT count(*) AS n FROM bookings WHERE status='reserved'").n}});
+  }
+  if(method==='GET'&&pathname==='/api/v1/admin/overview'){
+   role(user,['admin']);
+   const stats={
+    users:one('SELECT count(*) AS n FROM users').n,
+    driversPending:one("SELECT count(*) AS n FROM users WHERE driver_status='pending'").n,
+    driversApproved:one("SELECT count(*) AS n FROM users WHERE driver_status='approved'").n,
+    tripsPublished:one("SELECT count(*) AS n FROM trips WHERE status='published'").n,
+    bookingsReserved:one("SELECT count(*) AS n FROM bookings WHERE status='reserved'").n,
+    seatsReserved:one("SELECT coalesce(sum(seats),0) AS n FROM bookings WHERE status='reserved'").n,
+    faresReserved:one("SELECT coalesce(sum(total),0) AS n FROM bookings WHERE status='reserved'").n
+   };
+   const recentBookings=all("SELECT b.id,b.created_at,b.status,b.seats,b.total,u.name AS passenger,t.from_city,t.to_city,t.date FROM bookings b JOIN users u ON u.id=b.passenger_id JOIN trips t ON t.id=b.trip_id ORDER BY b.created_at DESC LIMIT 8");
+   const recentTrips=all("SELECT t.id,t.from_city,t.to_city,t.date,t.depart,t.seats_left,t.seats_total,t.status,u.name AS driver FROM trips t JOIN users u ON u.id=t.driver_id ORDER BY t.created_at DESC LIMIT 8");
+   const recentActivity=all('SELECT action,created_at FROM audit_events ORDER BY created_at DESC LIMIT 12');
+   return send(res,200,{data:{stats,recentBookings,recentTrips,recentActivity}});
   }
   if(method==='GET'&&pathname==='/api/v1/admin/drivers'){
    role(user,['admin']);const status=url.searchParams.get('status')||'pending';must(['pending','approved','rejected'].includes(status),'Invalid driver status');return send(res,200,{data:all(`SELECT ${USER_FIELDS} FROM users WHERE driver_status=? ORDER BY created_at DESC LIMIT 100`,status)});

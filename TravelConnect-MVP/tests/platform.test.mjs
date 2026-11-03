@@ -44,10 +44,12 @@ test('TravelConnect integration: real accounts, permissions, seats, cancellation
   assert.equal((await call('driver','/driver/apply','POST',{vehicle:'Toyota Corolla'})).status,200);
   assert.equal((await call('driver','/driver/trips','POST',tripInput)).status,403);
   assert.equal((await call('passenger','/admin/stats')).status,403);
+  assert.equal((await call('passenger','/admin/overview')).status,403);
   const salt=passwordRecord('verylongadminpassword!'),id=randomUUID();
   db.prepare("INSERT INTO users(id,name,email,password_salt,password_hash,role,created_at) VALUES(?,?,?,?,?,'admin',?)").run(id,'Admin One','admin@example.test',salt.salt,salt.hash,new Date().toISOString());
   const login=await call('admin','/auth/login','POST',{email:'admin@example.test',password:'verylongadminpassword!'});assert.equal(login.status,200);
   const reqs=await call('admin','/admin/drivers');assert.equal(reqs.data.length,1);
+  const ov=await call('admin','/admin/overview');assert.equal(ov.status,200);assert.ok(ov.data.stats.users>=4);assert.equal(ov.data.stats.driversPending,1);assert.ok(Array.isArray(ov.data.recentActivity));
   assert.equal((await call('admin',`/admin/drivers/${reqs.data[0].id}/approve`,'POST',{})).status,200);
   assert.equal((await call('driver','/auth/me')).user.driver_status,'approved');
  });
@@ -66,6 +68,7 @@ test('TravelConnect integration: real accounts, permissions, seats, cancellation
   assert.equal((await call('guest','/trips')).data.length,0); // no free seats
   assert.equal((await call('passenger','/bookings')).data.length,1);
   assert.equal((await call('driver','/driver/bookings')).data.length,2);
+  const summary=await call('admin','/admin/overview');assert.equal(summary.data.stats.bookingsReserved,2);assert.equal(summary.data.stats.seatsReserved,3);assert.equal(summary.data.stats.faresReserved,1050);assert.equal(summary.data.recentBookings.length,2);assert.equal(summary.data.recentTrips[0].driver,'Safe Driver');
   assert.equal((await call('driver',`/driver/trips/${tripId}`,'DELETE')).status,409); // active bookings prevent trip cancellation
  });
  await t.test('trip conversations are private',async()=>{

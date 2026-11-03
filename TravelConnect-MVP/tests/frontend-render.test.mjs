@@ -37,11 +37,12 @@ test('TravelConnect frontend renders live authenticated and guest routes without
  assert.match(show('driver'),/Sign in to drive/);
  assert.match(show('admin'),/Administrator access only/);
  assert.match(show('assistant'),/TripAI/);
+ assert.match(show('weather'),/Get real forecast/);
  const user={id:'u',role:'passenger',name:'Passenger',email:'test@example.com',phone:'',driver_status:'none'};
  assert.match(show('profile',`currentUser=${JSON.stringify(user)};`),/Account settings/);
  assert.match(show('driver'),/Driver application/);
  assert.match(show('trips'),/No journeys yet/);
  const d={...user,role:'driver',driver_status:'approved',vehicle:'Toyota Corolla'};
  assert.match(show('driver',`currentUser=${JSON.stringify(d)};`),/Publish a journey/);
- assert.match(show('admin',`currentUser={...currentUser,role:'admin'};`),/Driver applications awaiting review/);
+ assert.match(show('admin',`currentUser={...currentUser,role:'admin'};adminOverview={stats:{users:5,bookingsReserved:2,seatsReserved:4,faresReserved:1520,tripsPublished:1,driversApproved:1,driversPending:1},recentBookings:[{passenger:'Test Rider',from_city:'Johannesburg',to_city:'Durban',date:'2026-11-04',seats:1,total:380,status:'reserved'}],recentTrips:[],recentActivity:[]};`),/Test Rider/);
 });
