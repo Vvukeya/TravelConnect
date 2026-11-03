@@ -168,3 +168,51 @@ body{background:linear-gradient(180deg,#fffefc 0%,#fff9f2 55%,#fffdfb 100%);min-
  .mobile-tabs a.active{color:#ad4b18}
 }
 @media(prefers-reduced-motion:reduce){.feature,.how-card,.route-tile,.button{transition:none!important}}
+
+
+/* V8: photographed driver vehicle registration, reviews and ride details */
+.driver-registration{max-width:1000px;margin:0 auto;padding:34px!important}
+.registration-heading{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:30px}
+.registration-heading h3{font-size:1.45rem;letter-spacing:-.035em;margin-bottom:7px}
+.registration-step{background:#fff2e6;color:#a94c16;border-radius:30px;padding:8px 15px;font-weight:750;font-size:.77rem;white-space:nowrap}
+.vehicle-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:19px 22px}
+.vehicle-fields label.field{display:flex;flex-direction:column;gap:10px;color:#536780;font-size:.76rem;font-weight:800;letter-spacing:.04em}
+.vehicle-fields input{width:100%;min-height:52px;border:1px solid #e9ddd4;background:#fffaf5;color:#132f51;border-radius:12px;padding:12px 15px;font-size:.95rem;font-weight:600;letter-spacing:normal;outline:none}
+.vehicle-fields input:focus{border-color:#db7d41;box-shadow:0 0 0 3px rgba(236,131,61,.13)}
+.vehicle-upload{margin:29px 0 24px;padding:22px;border:1px solid #ecdcd0;background:#fffcf9;border-radius:17px}
+.vehicle-upload h3{font-size:1.18rem;margin-bottom:6px}
+.vehicle-upload .muted{font-size:.82rem;line-height:1.65;margin-bottom:15px}
+.vehicle-upload-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;text-align:center;min-height:155px;padding:24px;border:2px dashed #d9b59b;background:linear-gradient(135deg,#fff5e8,#fffdf7);color:#823e1a;border-radius:16px;cursor:pointer;transition:background .18s,border-color .18s}
+.vehicle-upload-drop:hover{background:#fff0db;border-color:#c86d32}
+.vehicle-upload-drop .upload-symbol{font-size:2.05rem;line-height:1;color:#bd5e2c}
+.vehicle-upload-drop strong{font-size:1rem}
+.vehicle-upload-drop small{color:#98715b;font-size:.77rem;font-weight:500}
+#car-photo-file{display:block;width:100%;margin:15px 0 8px;color:#52677f;font-size:.85rem}
+#car-photo-file::file-selector-button{border-radius:9px;border:1px solid #e7c5ac;background:#fff5eb;color:#944316;padding:10px 14px;font-weight:750;cursor:pointer;margin-right:12px}
+.car-photo-preview{display:block;margin-top:17px;width:min(100%,480px);max-height:340px;object-fit:cover;border-radius:13px;border:1px solid #eee0d7}
+.car-photo-preview[hidden]{display:none}
+#car-photo-status{font-size:.78rem;margin:12px 0 0!important}
+.registration-note{color:#807567;font-size:.78rem;line-height:1.6;margin-top:16px}
+.driver-registration .button.full{min-height:54px}
+.driver-application-status{display:flex;gap:26px;align-items:center;justify-content:space-between;max-width:970px}
+.driver-application-status>div{flex:1}
+.driver-application-status p{line-height:1.6;margin:12px 0}
+.status-car-photo{display:block;width:260px;height:173px;object-fit:cover;flex:none;border-radius:16px;border:1px solid #eee2d6}
+.driver-vehicle-overview{display:flex;align-items:center;gap:22px;border-radius:19px;background:#fffefa;border:1px solid #efe3d8;padding:17px 21px;margin:20px 0 28px;box-shadow:0 8px 22px #233a530b}
+.driver-vehicle-overview img{width:180px;height:114px;object-fit:cover;border-radius:13px;flex:none}
+.driver-vehicle-overview h3{font-size:1.2rem;margin:8px 0 6px;color:#152c4a}
+.driver-vehicle-overview p{color:#6c7d91;font-size:.87rem}
+.admin-vehicle-photo{display:block;flex:none;width:74px;height:65px;object-fit:cover;border-radius:11px;border:1px solid #eaded5}
+.vehicle-photo-showcase{position:relative;overflow:hidden;display:block;margin:0 0 21px;border-radius:20px;background:#152a47;border:1px solid #e9e1d6;box-shadow:0 15px 32px #182d4320}
+.vehicle-photo-showcase>img{display:block;width:100%;height:310px;object-fit:cover}
+.vehicle-photo-showcase figcaption{color:#39465a;background:#fffdfa;padding:12px 17px;font-size:.78rem;line-height:1.5}
+@media(max-width:760px){
+ .driver-registration{padding:21px!important}
+ .registration-heading{gap:12px}.registration-heading h3{font-size:1.2rem}
+ .vehicle-fields{grid-template-columns:1fr;gap:15px}
+ .vehicle-upload{padding:15px;margin-top:23px}
+ .driver-application-status,.driver-vehicle-overview{flex-direction:column;align-items:stretch}
+ .status-car-photo,.driver-vehicle-overview img{width:100%;height:180px}
+ .vehicle-photo-showcase>img{height:230px}
+ .admin-vehicle-photo{width:55px;height:55px}
+}
