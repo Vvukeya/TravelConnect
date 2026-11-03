@@ -4,6 +4,7 @@
  * A successful preflight cannot prove that Google OAuth is enabled; this still
  * requires a real browser sign-in and checking the Firebase Console.
  */
+import {getFirebaseRuntimeConfig} from './firebase-public-config.mjs';
 const endpoint = 'https://identitytoolkit.googleapis.com/v1/projects';
 const hints = {
  API_KEY_INVALID:'The Firebase Web API key is invalid. Copy the apiKey from Firebase Project settings → Your apps.',
@@ -45,6 +46,7 @@ let cache=new Map();
 export async function publicFirebaseDiagnostics(hostname='localhost',config=process.env){
  const key=String(hostname||'localhost').split(':')[0].toLowerCase().slice(0,160);
  const now=Date.now();const prior=cache.get(key);if(prior&&prior.until>now)return prior.promise;
- const promise=inspectFirebase({projectId:config.TC_FIREBASE_PROJECT_ID||'',apiKey:config.TC_FIREBASE_API_KEY||'',authDomain:config.TC_FIREBASE_AUTH_DOMAIN||'',appId:config.TC_FIREBASE_APP_ID||'',hostname:key});
+ const webConfig=getFirebaseRuntimeConfig(config);
+ const promise=inspectFirebase({projectId:webConfig.projectId,apiKey:webConfig.apiKey,authDomain:webConfig.authDomain,appId:webConfig.appId,hostname:key});
  cache.set(key,{promise,until:now+CACHE_MS});return promise;
 }
