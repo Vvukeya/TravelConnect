@@ -76,6 +76,10 @@ CREATE TABLE IF NOT EXISTS audit_events (
  created_at TEXT NOT NULL
 );
 `);
+// Add SSO metadata without modifying any existing passwords, roles or administrator records.
+const cols=db.prepare('PRAGMA table_info(users)').all().map(row=>row.name);
+if(!cols.includes('firebase_uid'))db.exec('ALTER TABLE users ADD COLUMN firebase_uid TEXT');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS ix_users_firebase_uid ON users(firebase_uid) WHERE firebase_uid IS NOT NULL');
 export { db };
 export function transaction(fn) {
  db.exec('BEGIN IMMEDIATE');

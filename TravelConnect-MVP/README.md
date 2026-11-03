@@ -1,3 +1,40 @@
+# TravelConnect V5 — Website, installable app, Google sign-in and FREE TripAI
+
+**New in V5:** Your supplied South Africa road-trip image is the website favicon, app icon, Apple touch icon and header brand artwork. The sign-in page has a genuine multicolour Google logo and a secure, configurable **Firebase Authentication + Google Single Sign-On** flow. TripAI now defaults to **free local Ollama**. You can optionally use the quota-limited Gemini free API tier. OpenAI is opt-in only. The existing SQLite accounts, driver approval, seat bookings and private messages are preserved.
+
+**To activate Google, see [FIREBASE_SETUP.md](FIREBASE_SETUP.md). To use a real free AI model, follow **[FREE_AI_SETUP.md](FREE_AI_SETUP.md)**.** Firebase credentials and API keys are NOT included or guessed. They must come from projects you own. Without Firebase configuration, Google sign-in is disabled. Real free TripAI works after starting Ollama and pulling the model, without any secret API key. Firebase Auth does not yet replace the SQLite booking database with Firestore.
+
+## Upgrade existing Mac installation (preserves your database)
+
+1. Stop the old website with **Ctrl+C**.
+2. Download V4 ZIP to your Downloads folder. From the VS Code terminal:
+
+```bash
+cd ~/TravelConnect
+unzip -o ~/Downloads/TravelConnect-Platform-V4.zip -d .
+cd TravelConnect-MVP
+npm run check
+npm test
+npm run db:backup
+npm run dev
+```
+
+3. Open `http://localhost:5500/#auth`. Keep your existing admin password: you do **not** need to create another admin account.
+4. If the old icon remains because your PWA cached an older build, refresh twice, close and reopen the installed app, or uninstall the old PWA and reinstall after the service worker updates.
+5. When it looks right, upload source code to GitHub:
+
+```bash
+cd ~/TravelConnect
+git status
+git add TravelConnect-MVP
+git commit -m "Add Firebase Google sign-in, TripAI config and new TravelConnect icon"
+git push origin main
+```
+
+`.env` and `data/` are excluded from GitHub. Do not publish a Firebase service-account private key or OpenAI secret anywhere.
+
+---
+
 # TravelConnect — Website, PWA, SQLite database and weather API (v0.3)
 
 **Every Journey Connects Us.** This is a **working, locally testable multi-user foundation** for a South African journey-sharing platform. It is **NOT ready to accept paying passengers or support real-world safety operations** yet. Read [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md) before hosting for public use.
@@ -13,13 +50,13 @@
 - The PWA and responsive website use the same backend over same-origin `/api/v1` REST endpoints. Accounts, trips and bookings persist in the SQLite database file instead of a browser's localStorage.
 - Automated tests cover authentication, roles, publication, inventory, cancellation, idempotency, message permissions, security headers and frontend route rendering.
 
-**Not included:** real payment processing, live GPS, professional document verification, always-on TripAI (requires your own API key), Google sign-in, email/phone verification, password recovery, emergency dispatch, push notifications, trusted-contact sharing and legal compliance certification. Those require real providers, credentials, user consent, and production validation. No money is collected; reservation fares are displayed only.
+**Not included:** real payment processing, live GPS, professional document verification, always-on hosted AI, production-ready Google sign-in, email/phone verification, password recovery, emergency dispatch, push notifications, trusted-contact sharing and legal compliance certification. Those require real providers, credentials, user consent, and production validation. No money is collected; reservation fares are displayed only.
 
 ## What is new in v0.3
 
 - Completely redesigned **administrator workspace** with desktop sidebar, mobile layout, real database metrics, pending driver reviews, recent bookings, journey inventory and audit event summaries.
 - New **Weather** tab and journey forecast cards calling the server-side `/api/v1/weather` endpoint. This checks real Open-Meteo forecasts; no dummy temperatures are returned.
-- Optional server-side **TripAI OpenAI Responses API** via `TC_OPENAI_API_KEY`, with authentication, rate limiting, a narrow travel-planning prompt and explicit provider-error feedback. Without a key, rules-based preview remains visible and labelled.
+- **TripAI free local model** via Ollama, optional quota-limited Gemini free tier and optional paid OpenAI fallback. Auth, rate limiting, and safe provider errors are retained. No paid OpenAI key is needed for local AI.
 - Forecasts show daily high, low, precipitation probability, conditions and data attribution. Fixed city coordinates are used; no personal GPS data is collected.
 - Cache is shared across users for 15 minutes to reduce provider requests. Requests time out cleanly if the provider is offline. Weather is informational only—not a road hazard alert.
 - Google Maps *directions link* from journey details and booking journey screen. This opens map directions in a new tab; it is **not** a connected vehicle tracker.
@@ -30,21 +67,12 @@
 
 Open-Meteo’s free public API is for **non-commercial evaluation only**. Locally, weather checks use this API for development. When you set `NODE_ENV=production`, the weather endpoint **requires** `TC_OPEN_METEO_KEY`, the paid/commercial Open-Meteo credential, and uses `customer-api.open-meteo.com`. Obtain a commercial plan first: https://open-meteo.com/en/pricing. Do not deploy the free public endpoint commercially. Preserve the displayed provider attribution.
 
-### Optional live TripAI
+### FREE real TripAI (no OpenAI payment)
 
-The project can call the official **OpenAI Responses API** from the backend after you configure your own API key. API usage is **separately billed** and is not included in a ChatGPT subscription. **Never place your key inside the website, GitHub, a screenshot, or a message to support.**
+**Recommended for your Mac:** Install [Ollama](https://ollama.com/download/mac), open the app, then run `ollama pull qwen3:1.7b`.
+Keep your existing Firebase settings in `.env` and add `TC_AI_PROVIDER=ollama` and `TC_OLLAMA_MODEL=qwen3:1.7b`. Then run `npm run doctor && npm run dev`.
 
-For local macOS Terminal (do not paste the actual secret into chat):
-
-```bash
-cd ~/TravelConnect/TravelConnect-MVP
-read -s 'TC_OPENAI_API_KEY?Paste your secret API key: '
-export TC_OPENAI_API_KEY
-export TC_AI_MODEL='gpt-6-luna'
-npm run dev
-```
-
-TripAI changes to live server-side replies when the key is present; it requires a signed-in TravelConnect account. The model name can be changed to one enabled in your own API project using `TC_AI_MODEL`. If an API request fails, the app shows an error rather than fake output. The server sends user questions to OpenAI, so users must be informed through a published privacy notice before public use. Official docs: https://platform.openai.com/docs/api-reference/responses.
+No OpenAI API key, OpenAI credits, or per-message API fees are needed. **For limited hosted use**, you may instead select `TC_AI_PROVIDER=gemini` with a Gemini free-tier key. Read **[FREE_AI_SETUP.md](FREE_AI_SETUP.md)** for both options and realistic deployment limitations.
 
 ## 1. Run it in VS Code on your Mac
 
@@ -169,3 +197,14 @@ See [API_REFERENCE.md](API_REFERENCE.md) for specific REST endpoints and test st
 ## Design reference
 
 Editable Figma file: [TravelConnect Prototype](https://www.figma.com/design/dZQ1VTCp5BbpFlWMKmnky0). The source code runs independently of Figma.
+
+
+## Diagnostics: Troubleshoot Google sign-in and TripAI
+
+Run `npm run doctor` from `TravelConnect-MVP`; it prints whether each configuration field is present **without revealing secret values**. This does not verify billing or external OAuth settings.
+
+If Google displays `auth/internal-error`, test in a **normal Chrome tab** (not the installed PWA) at `http://localhost:5500/#auth`. In Firebase Console, enable Authentication → Sign-in method → Google, set a support email, and add `localhost` under Authentication → Settings → Authorized domains. Recheck that `.env` matches **Project settings → Your apps → Web app configuration**, then restart `npm run dev`. Inspect Chrome DevTools Console/Network only if the issue persists. Never paste ID tokens or API keys in tickets.
+
+If TripAI fails, the UI now indicates whether the provider rejected its credentials (401), API quota/rate limits (429), model/permissions (400/403), or has a temporary outage (503). For **free Ollama**, confirm Ollama.app is running and the model shown by `ollama list` matches your `.env`. For **Gemini free-tier**, check the provider quota and key. The optional paid OpenAI provider is not used unless explicitly selected. The server logs **only the provider HTTP status and error code**, not secrets.
+
+These improvements provide diagnostics, **not a promise of working third-party services until provider settings, accounts and billing are configured**.

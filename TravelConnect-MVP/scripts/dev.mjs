@@ -11,7 +11,7 @@ export function createServer(){return http.createServer(async(req,res)=>{
  res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');
  res.setHeader('X-Frame-Options','DENY');
  res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=()');
- res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
+ res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com https://www.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://*.firebaseapp.com; frame-src 'self' https://*.firebaseapp.com https://*.web.app https://accounts.google.com https://www.google.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
  if(req.socket.encrypted || (process.env.TRUST_PROXY==='1'&&req.headers['x-forwarded-proto']==='https'))res.setHeader('Strict-Transport-Security','max-age=31536000; includeSubDomains');
  let url;try{url=new URL(req.url,'http://localhost')}catch {res.writeHead(400);res.end('Bad request');return}
  if(url.pathname.startsWith('/api/v1/')) {await api(req,res,url);return}

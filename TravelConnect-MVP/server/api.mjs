@@ -2,12 +2,15 @@ import {randomUUID} from 'node:crypto';
 import {db, transaction, audit} from './db.mjs';
 import {weatherService} from './weather.mjs';
 import {aiService} from './ai.mjs';
+import {firebaseVerifier} from './firebase.mjs';
+import {publicFirebaseDiagnostics} from './firebase-diagnostics.mjs';
+import {randomBytes} from 'node:crypto';
 import {ApiError,iso,must,safeString,normalizeEmail,validName,validPassword,integer,validateDate,validateTime,passwordRecord,passwordValid,hashToken,randomToken,parseCookies,uuid,nowJohannesburg} from './security.mjs';
 
-const USER_FIELDS='id,name,email,phone,role,driver_status,vehicle,created_at';
+const USER_FIELDS='id,name,email,phone,role,driver_status,vehicle,created_at,firebase_uid';
 const one=(sql,...params)=>db.prepare(sql).get(...params);
 const all=(sql,...params)=>db.prepare(sql).all(...params);
-const redact=u=>u?Object.fromEntries(['id','name','email','phone','role','driver_status','vehicle','created_at'].map(k=>[k,u[k]])):null;
+const redact=u=>u?Object.fromEntries(['id','name','email','phone','role','driver_status','vehicle','created_at'].map(k=>[k,u[k]]).concat([['googleLinked',Boolean(u.firebase_uid)]])):null;
 const SESSION_DAYS=7;
 const secure=(req)=>Boolean(req.socket.encrypted) || (process.env.TRUST_PROXY==='1' && String(req.headers['x-forwarded-proto']).split(',')[0].trim()==='https');
 const cookie=(value,req,age=SESSION_DAYS*24*60*60)=>`tc_session=${value}; Path=/api/v1; HttpOnly; SameSite=Strict; Max-Age=${age}${secure(req)?'; Secure':''}`;
@@ -33,7 +36,7 @@ function checkTripPublishStatus(user){role(user,['driver']);must(user.driver_sta
 export async function api(req,res,url){const method=req.method||'GET',pathname=url.pathname;
  if(!pathname.startsWith('/api/v1/'))return false;
  try{
-  if(method==='GET'&&pathname==='/api/v1/health')return send(res,200,{ok:true,service:'TravelConnect',database:'connected',version:'0.3.0'});
+  if(method==='GET'&&pathname==='/api/v1/health')return send(res,200,{ok:true,service:'TravelConnect',database:'connected',version:'0.6.0'});
   if(method==='GET'&&pathname==='/api/v1/weather'){
    throttle(req,'weather',90,60*60*1000);
    const city=safeString(url.searchParams.get('city'),80);
@@ -51,12 +54,60 @@ export async function api(req,res,url){const method=req.method||'GET',pathname=u
   if(method==='GET'&&tripDetail){const row=one(`${TRIP_QUERY} WHERE t.id=? AND t.status='published' AND u.driver_status='approved'`,tripDetail[1]);must(row,'Journey not found',404);return send(res,200,{data:rawTrip(row)})}
   const user=userFor(req);
   if(method==='GET'&&pathname==='/api/v1/auth/me')return send(res,200,{user:redact(user)});
-  if(method==='GET'&&pathname==='/api/v1/ai/status')return send(res,200,{enabled:aiService.enabled,provider:aiService.enabled?'OpenAI':null});
+  if(method==='GET'&&pathname==='/api/v1/ai/status')return send(res,200,await aiService.status());
+  if(method==='GET'&&pathname==='/api/v1/auth/firebase/config')return send(res,200,{enabled:firebaseVerifier.enabled,config:firebaseVerifier.publicConfig});
+  if(method==='GET'&&pathname==='/api/v1/auth/firebase/diagnostics'){
+   throttle(req,'firebase-diagnostics',30,10*60*1000);
+   const hostname=String(req.headers.host||'localhost').split(':')[0];
+   return send(res,200,{data:await publicFirebaseDiagnostics(hostname)});
+  }
   if(['POST','PATCH','PUT','DELETE'].includes(method))requireSameOrigin(req);
   const data=['POST','PATCH','PUT'].includes(method)?await bodyJSON(req):{};
   if(method==='POST'&&pathname==='/api/v1/ai/ask'){
    auth(user);throttle(req,'ai',12,10*60*1000);
-   try{return send(res,200,{data:await aiService.ask(data.question)});}catch(error){throw new ApiError(error.status||503,error.message);}
+   try{return send(res,200,{data:await aiService.ask(data.question)});}catch(error){const failure=new ApiError(error.status||503,error.message);if(error.safeClientMessage)failure.safeClientMessage=error.safeClientMessage;throw failure;}
+  }
+  if(method==='POST'&&pathname==='/api/v1/auth/google'){
+   throttle(req,'google',20,15*60*1000);
+   must(typeof data.idToken==='string' && data.idToken.length<=8192,'Google sign-in requires an ID token');
+   // The cryptographic verifier checks the certificate signature, project audience,
+   // Google OAuth provider, issuer, expiry and verified email. Never trust an email
+   // or an account role supplied directly by the browser.
+   let verified;
+   try{verified=await firebaseVerifier.verifyIdToken(data.idToken)}
+   catch(error){throw new ApiError(error.status||503,error.message)}
+   const email=normalizeEmail(verified.email);
+   const name=validName(verified.name.trim().slice(0,70)||'Google Traveller');
+   const account=transaction(()=>{
+    const linked=one('SELECT * FROM users WHERE firebase_uid=?',verified.uid);
+    if(linked){
+     must(!user || user.id===linked.id,'This Google account belongs to a different TravelConnect account',409);
+     return linked;
+    }
+    if(user){
+     must(user.email===email,'Google email must match your current TravelConnect account to link it',409);
+     must(!user.firebase_uid,'This account is already connected to another Google identity',409);
+     db.prepare('UPDATE users SET firebase_uid=? WHERE id=? AND firebase_uid IS NULL').run(verified.uid,user.id);
+     audit(user.id,'auth.google.link');
+     return one('SELECT * FROM users WHERE id=?',user.id);
+    }
+    must(!one('SELECT 1 FROM users WHERE email=?',email),
+     'This email already has a TravelConnect password account. Sign in with your password, then link Google from Account settings.',409);
+    const id=randomUUID();
+    // Google-only accounts have an unguessable, unusable local password record;
+    // the existing database schema and password accounts remain compatible.
+    const password=passwordRecord(randomBytes(48).toString('base64url'));
+    db.prepare('INSERT INTO users(id,name,email,password_salt,password_hash,firebase_uid,created_at) VALUES(?,?,?,?,?,?,?)')
+      .run(id,name,email,password.salt,password.hash,verified.uid,iso());
+    audit(id,'auth.google.register');
+    return one('SELECT * FROM users WHERE id=?',id);
+   });
+   const session=randomToken();
+   db.prepare('DELETE FROM sessions WHERE expires_at<=?').run(iso());
+   db.prepare('INSERT INTO sessions(token_hash,user_id,created_at,expires_at) VALUES(?,?,?,?)')
+     .run(hashToken(session),account.id,iso(),new Date(Date.now()+SESSION_DAYS*86400000).toISOString());
+   audit(account.id,'auth.google.login');
+   return send(res,200,{user:redact(account)},{'Set-Cookie':cookie(session,req)});
   }
   if(method==='POST'&&pathname==='/api/v1/auth/register'){
    throttle(req,'register',7,60*60*1000);
@@ -163,6 +214,6 @@ export async function api(req,res,url){const method=req.method||'GET',pathname=u
    db.prepare('UPDATE users SET driver_status=? WHERE id=?').run(action==='approve'?'approved':'rejected',driverId);audit(user.id,'driver.'+action,driverId);return send(res,200,{ok:true,disclaimer:'Admin status indicates manual internal review, not external identity or licence certification.'});
   }
   throw new ApiError(404,'API endpoint not found');
- }catch(err){const status=err instanceof ApiError?err.status:500; if(status>=500)console.error('[API]',err);send(res,status,{error:status>=500?'Unexpected server error':err.message});}
+ }catch(err){const status=err instanceof ApiError?err.status:500; if(status>=500)console.error('[API]',err);send(res,status,{error:status>=500?(err.safeClientMessage||'Unexpected server error'):err.message});}
  return true;
 }

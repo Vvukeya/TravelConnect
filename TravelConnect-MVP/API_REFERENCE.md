@@ -26,7 +26,7 @@ All endpoints run **on the same Node.js server** under `/api/v1`. HTTP JSON; the
 | POST | `/admin/drivers/:id/reject` | Admin | Internal rejection |
 | GET | `/weather?city=Durban&date=2026-11-04` | Anyone | Open-Meteo live model forecast; city/date whitelist and 15-minute cache |
 | GET | `/ai/status` | Anyone | Whether AI integration is configured (never returns key) |
-| POST | `/ai/ask` | Logged-in user | Optional OpenAI Responses API via server key |
+| POST | `/ai/ask` | Logged-in user | Local Ollama, Gemini free tier or opt-in OpenAI via server configuration |
 
 All POST/PATCH/DELETE requests require `Content-Type: application/json` (except DELETE) and `X-TravelConnect-Client: web` plus same-origin checks. These protections help limit CSRF but do not replace a full production security audit.
 
@@ -50,3 +50,13 @@ npm run dev
 ## Host safety requirements
 
 Deploy on a Node.js 22.13+ platform with **persistent writable SQLite data volume**, HTTPS reverse proxy, strict secret management and daily offsite backup/restore drills. Never put `.env` files or `data/` into Git. Set `NODE_ENV=production` for commercial hosting; the weather route then requires the commercial provider credential. The test server is not suitable for public ride-sharing operations before the launch checklist is completed.
+
+
+## V4 Firebase Authentication and TripAI
+
+- `GET /api/v1/auth/firebase/config`: `{ enabled: boolean, config: publicFirebaseWebConfig | null }`. The returned web configuration contains Firebase browser identifiers only; never service-account credentials.
+- `POST /api/v1/auth/google`: accepts `{ "idToken":"<Firebase ID token from Google OAuth>" }`. This endpoint requires the normal `X-TravelConnect-Client: web` same-origin JSON protection. It verifies Google's RS256 signature and Firebase project/issuer, verified email and provider, then either creates a passenger or signs in a linked account. Existing password users must explicitly link from a logged-in session.
+- `GET /api/v1/ai/status`: returns provider/model and `enabled:true` only when the selected provider is ready; Ollama checks that the local model is installed.
+- `POST /api/v1/ai/ask`: authenticated, throttled request containing `{ "question":"..." }`. Returns real model text from free local Ollama or configured Gemini. If Ollama is offline, returns a safe actionable 503 error instead of fake AI text.
+
+See [FIREBASE_SETUP.md](FIREBASE_SETUP.md). The API is not a Firebase Firestore database: authenticated travel data remains in SQLite.

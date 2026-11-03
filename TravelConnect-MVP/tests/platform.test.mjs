@@ -36,6 +36,8 @@ test('TravelConnect integration: real accounts, permissions, seats, cancellation
   const x2=await call('second','/auth/register','POST',{name:'Passenger Two',email:'second@example.test',password:'passphrase123!'});assert.equal(x2.status,201);
   const d=await call('driver','/auth/register','POST',{name:'Safe Driver',email:'driver@example.test',password:'passphrase123!'});assert.equal(d.status,201);
   assert.equal((await call('guest','/auth/login','POST',{email:'passenger@example.test',password:'wrong'})).status,401);
+  assert.equal((await call('guest','/auth/firebase/config')).enabled,false);
+  assert.equal((await call('guest','/auth/google','POST',{idToken:'fake-id-token'})).status,503);
   assert.equal((await call('passenger','/auth/me')).user.email,'passenger@example.test');
   assert.equal((await call('guest','/bookings')).status,401);
  });

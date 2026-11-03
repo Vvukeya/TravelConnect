@@ -1,0 +1,74 @@
+/* TravelConnect / Sunset Road brand theme — derived from the supplied SA icon.
+   Navy blue silhouette, tangerine sunset, gold highlights and warm ivory. */
+:root{
+ --navy:#082953; --navy-2:#081a36;
+ --blue:#c74b0b; --blue-2:#e37124;
+ --teal:#b85a21; --teal-dark:#934017;
+ --ink:#122944; --muted:#68798d; --line:#e9e1dc;
+ --page:#fff9f3; --white:#fff; --mint:#fff0db;
+ --sky:#fff1e6; --peach:#fff1d7;
+ --shadow:0 15px 42px rgba(37,35,43,.09);
+ --sunset-orange:#ef7827; --sunset-gold:#ffc16f; --sunset-ink:#092651;
+}
+body{background:linear-gradient(180deg,#fffefa 0,#fff9f2 390px,#fffaf6 100%)}
+::selection{background:#fba65588;color:#112542}
+:focus-visible,button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #f7a55a;outline-offset:3px}
+.demo-ribbon{background:linear-gradient(90deg,#fff5e7,#ffe5c7);color:#7e3c17;border-bottom:1px solid #f9d6b7}
+.demo-dot{background:#dc6726;box-shadow:0 0 0 4px #ffcfa6}
+.topbar{background:rgba(255,253,249,.97);border-color:#f4e3d8}
+.brand{color:#092851}.brand-image{box-shadow:0 7px 18px #a84c1c28}
+.desktop-nav a:hover,.desktop-nav a.active,.mobile-tabs a.active{color:#a74411}
+.avatar-btn{background:#fff0db;color:#9c431b}
+.button,.search-grid .button{background:linear-gradient(128deg,#bd460c,#da611a);color:#fff;box-shadow:0 9px 18px #c75b232d}
+.button:hover,.search-grid .button:hover{background:linear-gradient(128deg,#a93c06,#c95611);box-shadow:0 12px 26px #bb551b38}
+.button.secondary{background:#fffdf9;color:#9b3b11;border:1px solid #f7cfb7;box-shadow:0 5px 12px #ca7c3515}
+.button.secondary:hover{background:#fff2e3}
+.button.subtle{background:#fff0df;color:#a74411}
+.button.dark{background:#0d2d58;color:#fff}
+.pill{background:#fff0e2;color:#a34716}.pill.green{background:#fff2db;color:#854012}.pill.dark{background:#5b371f99;color:#fff8ec}.pill.orange{color:#9a3d15}
+.eyebrow,.mini-star,.link,.back-link{color:#b34c13}
+.hero{background:radial-gradient(circle at 83% 10%,#a35439 0,#2d385b 31%,transparent 58%),linear-gradient(123deg,#092c55 0%,#101d3d 67%,#261934 100%)}
+.hero-orb.one{background:#ff9a48;opacity:.45}.hero-orb.two{background:#ffca68;opacity:.23}
+.hero-copy p{color:#ffdfcb}.hero-trust span{color:#ffeadc}
+.scene{background:linear-gradient(180deg,#fe963d,#1b2c53);box-shadow:0 28px 74px #120e274a}
+.scene-floating{box-shadow:0 8px 31px #18112d45;border:1px solid #ffe3d2}
+.scene-floating .money{color:#b84812}.scene-avatar{background:#ffe9c8;color:#ad4210}
+.search-panel,.surface,.how-card,.feature,.ride-card,.trip-card,.metric,.admin-metric,.admin-panel{border-color:#f1e6de}
+.search-panel{box-shadow:0 20px 48px #864a2826}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#da7c45;box-shadow:0 0 0 3px #f2a66b35}
+.field input,.field select,.field textarea{background:#fffaf6;border-color:#f2e4d9}
+.iconline{background:#fff0df;color:#ad4917}.iconline.green{background:#fff5de;color:#a8641b}
+.route-tile{background:linear-gradient(125deg,#ffeacb,#ffd9a8)}
+.route-tile:nth-child(2){background:linear-gradient(115deg,#fff2d6,#ffddbc)}
+.route-tile:nth-child(3){background:linear-gradient(115deg,#fff2e2,#f4d7ce)}
+.route-tile:after{background:#f38439}.route-tile:nth-child(2):after{background:#e59a36}.route-tile:nth-child(3):after{background:#9d5064}
+.route-tile .eyebrow{color:#9a421c}.route-tile:nth-child(2) .eyebrow{color:#90511d}
+.how-num{color:#d26821}
+.app-banner{background:linear-gradient(105deg,#092b55,#16284c 55%,#7a3940)}
+.app-banner .button{background:#fff4df;color:#9a3d10}
+.ai-hero{background:radial-gradient(circle at 90% 0,#74404e 0,transparent 45%),linear-gradient(140deg,#0c2d55,#0d1937)}
+.ai-hero:after{color:#ffbb67}
+.suggestion:hover{border-color:#e4a16a}
+.message.mine{background:#fff0e0}.message .name{color:#a74411}
+.driver-avatar,.scene-avatar,.admin-user-avatar{background:#fff0db;color:#a74516}
+.price,.price-col strong,.booking-aside .price,.admin-metric-icon{color:#b34913}
+.google-auth-button:hover:not(:disabled){border-color:#d97b42;box-shadow:0 5px 15px #a5441722}
+.google-auth-button:focus-visible{outline:3px solid #eda366;outline-offset:3px}
+.auth-divider:before,.auth-divider:after{background:#f0dfd2}
+.firebase-diagnostic-link{display:inline-flex;margin-top:8px;padding:6px 0;color:#a74411;border:0;background:none;font-size:.83rem;font-weight:700;text-decoration:underline;text-underline-offset:3px;text-align:left}
+.firebase-diagnostic-link:hover{color:#7b340d}
+.admin-sidebar{background:linear-gradient(165deg,#0b2b57,#08172e 76%)}
+.admin-side-item.active,.admin-side-item:hover{background:#713f31}
+.admin-side-item.active:before{background:#ffb968}
+.admin-metric-icon,.admin-metric-icon.teal,.admin-metric-icon.purple,.admin-metric-icon.orange{background:#fff0df;color:#aa4d17}
+.admin-metric>small{color:#9c4e1a}
+.admin-user-avatar{background:#ffebd0;color:#a84516}
+.admin-glance-stats>div,.admin-table th{background:#fff7ee}
+.admin-timeline-dot{border-color:#d66d30}
+.weather-summary{background:linear-gradient(135deg,#fff0d5,#fff9ec);border-color:#f4dbc5}
+.weather-city-tile,.weather-city-1,.weather-city-2,.weather-city-3{background:#fff0de;border-color:#f2dcc8}
+.weather-home-banner{background:linear-gradient(110deg,#fff1dc,#ffe5c5);border-color:#f2d1ac}
+.weather-credit a,.weather-provider a{color:#a84916}
+.legal-note,.admin-alert{background:#fff4e3;border-color:#f5debc}
+.mobile-tabs{background:#fffdfa;border-color:#f4e0d1}
+@media(max-width:760px){.topbar{background:#fffdfa}.demo-ribbon{background:#fff0da}.site-footer{background:#fffaf4}}

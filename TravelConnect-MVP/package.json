@@ -1,16 +1,20 @@
 {
   "name": "travelconnect",
-  "version": "0.3.0",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
-  "description": "TravelConnect multi-user marketplace PWA, real database and live weather API",
+  "description": "TravelConnect booking PWA + sunset UI + Firebase diagnostics + free local AI",
   "scripts": {
-    "dev": "node scripts/dev.mjs",
-    "start": "node scripts/dev.mjs",
-    "admin:create": "node scripts/create-admin.mjs",
+    "dev": "node --env-file-if-exists=.env scripts/dev.mjs",
+    "start": "node --env-file-if-exists=.env scripts/dev.mjs",
+    "admin:create": "node --env-file-if-exists=.env scripts/create-admin.mjs",
     "db:backup": "node scripts/backup-db.mjs",
+    "doctor": "node --env-file-if-exists=.env scripts/doctor.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check web/app.js && node --check scripts/dev.mjs && node --check server/api.mjs && node --check server/db.mjs && node --check server/weather.mjs && node --check server/ai.mjs && node --check scripts/backup-db.mjs"
+    "check": "node --check web/app.js && node --check scripts/dev.mjs && node --check server/api.mjs && node --check server/db.mjs && node --check server/weather.mjs && node --check server/ai.mjs && node --check scripts/backup-db.mjs && node --check server/firebase.mjs && node --check web/firebase-auth.js && node --check server/firebase-diagnostics.mjs && node --check scripts/firebase-check.mjs",
+    "firebase:check": "node --env-file-if-exists=.env scripts/firebase-check.mjs"
   },
-  "engines": {"node": ">=22.13.0"}
+  "engines": {
+    "node": ">=22.13.0"
+  }
 }

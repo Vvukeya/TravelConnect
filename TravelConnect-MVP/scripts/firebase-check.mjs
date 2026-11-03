@@ -1,0 +1,10 @@
+import {publicFirebaseDiagnostics} from '../server/firebase-diagnostics.mjs';
+const result=await publicFirebaseDiagnostics('localhost');
+console.log('TravelConnect Firebase public-config check (no keys or tokens printed)');
+console.log('  Project:',result.projectId||'(missing)');
+console.log('  Domain:',result.hostname);
+console.log('  Result:',result.status);
+for(const issue of result.issues||[])console.log('  Check:',issue);
+console.log('  Google provider: not verifiable via public project settings; confirm Authentication → Sign-in method → Google');
+if(result.help)console.log('  Next:',result.help);
+if(!result.ready && result.status!=='unavailable')process.exitCode=1;
