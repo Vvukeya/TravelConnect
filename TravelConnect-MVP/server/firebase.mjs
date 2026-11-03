@@ -5,6 +5,9 @@
  * Reference: https://firebase.google.com/docs/auth/admin/verify-id-tokens
  */
 import {createPublicKey, X509Certificate, verify as verifySignature} from 'node:crypto';
+import {getFirebaseRuntimeConfig} from './firebase-public-config.mjs';
+
+const defaultFirebaseConfig=getFirebaseRuntimeConfig();
 
 const CERTIFICATES='https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com';
 function apiError(status,message){return Object.assign(new Error(message),{status})}
@@ -14,11 +17,11 @@ function decodeSegment(data){
 }
 
 export function createFirebaseVerifier({
- projectId=process.env.TC_FIREBASE_PROJECT_ID||'',
- apiKey=process.env.TC_FIREBASE_API_KEY||'',
- authDomain=process.env.TC_FIREBASE_AUTH_DOMAIN||'',
- appId=process.env.TC_FIREBASE_APP_ID||'',
- messagingSenderId=process.env.TC_FIREBASE_MESSAGING_SENDER_ID||'',
+ projectId=defaultFirebaseConfig.projectId,
+ apiKey=defaultFirebaseConfig.apiKey,
+ authDomain=defaultFirebaseConfig.authDomain,
+ appId=defaultFirebaseConfig.appId,
+ messagingSenderId=defaultFirebaseConfig.messagingSenderId,
  fetchImpl=fetch,
  now=()=>Date.now(),
  certificatesUrl=CERTIFICATES
