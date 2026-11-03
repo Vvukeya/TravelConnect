@@ -1,10 +1,13 @@
 /* Safe, credential-free diagnostics. Never print password or API keys. */
 import {createAiService} from '../server/ai.mjs';
+import {getFirebaseRuntimeConfig} from '../server/firebase-public-config.mjs';
 const present=k=>Boolean(process.env[k]?.trim());
 console.log('TravelConnect setup diagnostic — NO secret values displayed');
-const fb=['TC_FIREBASE_PROJECT_ID','TC_FIREBASE_API_KEY','TC_FIREBASE_AUTH_DOMAIN','TC_FIREBASE_APP_ID','TC_FIREBASE_MESSAGING_SENDER_ID'];
-for(const k of fb)console.log(`  ${k}: ${present(k)?'present':'not configured'}`);
-console.log('  Firebase Google sign-in:',fb.slice(0,4).every(present)?'Web config present — verify authorized domains and provider in Firebase Console':'Not configured (optional, separate from TripAI)');
+const config=getFirebaseRuntimeConfig();
+console.log('  Firebase source:',process.env.TC_FIREBASE_USE_ENV==='1'?'explicit environment override':'bundled TravelConnect Web app');
+console.log('  Firebase project:',config.projectId||'(missing)');
+console.log('  Google sign-in configuration:',config.projectId&&config.apiKey&&config.authDomain&&config.appId?'Loaded — Google provider and authorized domain still require a real sign-in test':'Incomplete');
+console.log('  Note: Firebase Web API key is deliberately not displayed.');
 const ai=createAiService();
 console.log(`  TripAI provider: ${ai.provider||'invalid configuration'} (${ai.model})`);
 const status=await ai.status();
