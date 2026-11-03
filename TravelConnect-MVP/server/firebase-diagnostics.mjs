@@ -15,7 +15,7 @@ const hints = {
  INVALID_ARGUMENT:'Firebase rejected the Web API key or project configuration.'
 };
 const short=s=>String(s||'').trim().slice(0,140);
-export async function inspectFirebase({projectId='',apiKey='',authDomain='',appId='',hostname='localhost',fetchImpl=fetch}={}){
+export async function inspectFirebase({projectId='',apiKey='',authDomain='',appId='',messagingSenderId='',hostname='localhost',fetchImpl=fetch}={}){
  const issues=[];
  if(!projectId||!apiKey||!authDomain||!appId) return {status:'incomplete',ready:false,projectId:short(projectId),hostname:short(hostname),issues:['Firebase Web app config is incomplete. Set the five TC_FIREBASE_* values in .env and restart the server.'],provider:'unverified'};
  const expected=`${projectId}.firebaseapp.com`;
@@ -33,13 +33,25 @@ export async function inspectFirebase({projectId='',apiKey='',authDomain='',appI
   const hint=Object.entries(hints).find(([k])=>code.includes(k))?.[1]||'Firebase rejected the configuration check. Confirm the Web app API key and Firebase Authentication setup.';
   return {status:'rejected',ready:false,projectId:short(projectId),hostname:short(hostname),issues:[...issues,hint],provider:'unverified'};
  }
- const actual=payload.projectId||payload.project_id||'';
- if(actual && actual!==projectId)issues.push(`Firebase Web API key belongs to project "${short(actual)}" but TC_FIREBASE_PROJECT_ID is "${short(projectId)}". Copy all five TC_FIREBASE_* values from the SAME Web app in Firebase Project settings → General → Your apps.`);
+ // Identity Toolkit may return a *numeric project number* in projectId,
+ // whereas the Firebase Web config uses a human-readable project ID.
+ // Compare numeric values against messagingSenderId / the appId's project
+ // number; comparing them to the text project ID produces false alarms.
+ const actual=String(payload.projectId||payload.project_id||'');
+ const webProjectNumber=String(messagingSenderId||/^1:(\\d+):web:/.exec(appId)?.[1]||'');
+ let projectIdentityCheck='unavailable';
+ if(actual && /^\\d+$/.test(actual)){
+  if(webProjectNumber&&actual===webProjectNumber)projectIdentityCheck='matched';
+  else if(webProjectNumber){projectIdentityCheck='mismatch';issues.push(`Firebase project number mismatch: the API key identifies "${short(actual)}" but the Web app uses "${short(webProjectNumber)}". Copy the configuration from one Firebase Web app.`);}
+ }else if(actual){
+  projectIdentityCheck=actual===projectId?'matched':'mismatch';
+  if(actual!==projectId)issues.push(`Firebase Web API key belongs to project "${short(actual)}" but TC_FIREBASE_PROJECT_ID is "${short(projectId)}". Copy the configuration from the same Web app.`);
+ }
  const domains=Array.isArray(payload.authorizedDomains)?payload.authorizedDomains:[];
  if(domains.length && !domains.includes(hostname))issues.push(`The current domain (${short(hostname)}) is not authorized. Firebase → Authentication → Settings → Authorized domains → Add domain.`);
  if(domains.length && !domains.includes(authDomain))issues.push('The authDomain is missing from Firebase Authorized domains. Verify Firebase project setup.');
- const fatal=issues.some(m=>/Firebase Web API key belongs|does not match your configured project|not authorized|authDomain is missing/.test(m));
- return {status:fatal?'action-required':issues.length?'warning':'ready',ready:!fatal,projectId:short(projectId),hostname:short(hostname),issues,authorizedDomainCheck:domains.length?(domains.includes(hostname)?'allowed':'blocked'):'unavailable',provider:'unverified',help:'Also enable Google in Firebase Authentication → Sign-in method. Browser OAuth must be tested with a real Google account.'};
+ const fatal=issues.some(m=>/Firebase Web API key belongs|Firebase project number mismatch|does not match your configured project|not authorized|authDomain is missing/.test(m));
+ return {status:fatal?'action-required':issues.length?'warning':'ready',ready:!fatal,projectId:short(projectId),hostname:short(hostname),issues,projectIdentityCheck,authorizedDomainCheck:domains.length?(domains.includes(hostname)?'allowed':'blocked'):'unavailable',provider:'unverified',help:'Also enable Google in Firebase Authentication → Sign-in method. Browser OAuth must be tested with a real Google account.'};
 }
 const CACHE_MS=120000;
 let cache=new Map();
@@ -47,6 +59,6 @@ export async function publicFirebaseDiagnostics(hostname='localhost',config=proc
  const key=String(hostname||'localhost').split(':')[0].toLowerCase().slice(0,160);
  const now=Date.now();const prior=cache.get(key);if(prior&&prior.until>now)return prior.promise;
  const webConfig=getFirebaseRuntimeConfig(config);
- const promise=inspectFirebase({projectId:webConfig.projectId,apiKey:webConfig.apiKey,authDomain:webConfig.authDomain,appId:webConfig.appId,hostname:key});
+ const promise=inspectFirebase({projectId:webConfig.projectId,apiKey:webConfig.apiKey,authDomain:webConfig.authDomain,appId:webConfig.appId,messagingSenderId:webConfig.messagingSenderId,hostname:key});
  cache.set(key,{promise,until:now+CACHE_MS});return promise;
 }
