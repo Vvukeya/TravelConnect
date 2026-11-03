@@ -38,9 +38,9 @@ export async function inspectFirebase({projectId='',apiKey='',authDomain='',appI
  // Compare numeric values against messagingSenderId / the appId's project
  // number; comparing them to the text project ID produces false alarms.
  const actual=String(payload.projectId||payload.project_id||'');
- const webProjectNumber=String(messagingSenderId||/^1:(\\d+):web:/.exec(appId)?.[1]||'');
+ const webProjectNumber=String(messagingSenderId||/^1:(\d+):web:/.exec(appId)?.[1]||'');
  let projectIdentityCheck='unavailable';
- if(actual && /^\\d+$/.test(actual)){
+ if(actual && /^\d+$/.test(actual)){
   if(webProjectNumber&&actual===webProjectNumber)projectIdentityCheck='matched';
   else if(webProjectNumber){projectIdentityCheck='mismatch';issues.push(`Firebase project number mismatch: the API key identifies "${short(actual)}" but the Web app uses "${short(webProjectNumber)}". Copy the configuration from one Firebase Web app.`);}
  }else if(actual){
