@@ -7,10 +7,10 @@ import {publicFirebaseDiagnostics} from './firebase-diagnostics.mjs';
 import {randomBytes} from 'node:crypto';
 import {ApiError,iso,must,safeString,normalizeEmail,validName,validPassword,integer,validateDate,validateTime,passwordRecord,passwordValid,hashToken,randomToken,parseCookies,uuid,nowJohannesburg} from './security.mjs';
 
-const USER_FIELDS='id,name,email,phone,role,driver_status,vehicle,created_at,firebase_uid';
+const USER_FIELDS='id,name,email,phone,role,driver_status,vehicle,vehicle_make,vehicle_model,vehicle_year,vehicle_color,vehicle_seats,vehicle_plate,vehicle_photo_mime,created_at,firebase_uid';
 const one=(sql,...params)=>db.prepare(sql).get(...params);
 const all=(sql,...params)=>db.prepare(sql).all(...params);
-const redact=u=>u?Object.fromEntries(['id','name','email','phone','role','driver_status','vehicle','created_at'].map(k=>[k,u[k]]).concat([['googleLinked',Boolean(u.firebase_uid)]])):null;
+const redact=u=>u?Object.fromEntries(['id','name','email','phone','role','driver_status','vehicle','vehicle_make','vehicle_model','vehicle_year','vehicle_color','vehicle_seats','vehicle_plate','created_at'].map(k=>[k,u[k]]).concat([['googleLinked',Boolean(u.firebase_uid)],['hasVehiclePhoto',Boolean(u.vehicle_photo_mime)],['vehiclePhotoUrl',u.vehicle_photo_mime?`/api/v1/drivers/${u.id}/vehicle-photo`:null]])):null;
 const SESSION_DAYS=7;
 const secure=(req)=>Boolean(req.socket.encrypted) || (process.env.TRUST_PROXY==='1' && String(req.headers['x-forwarded-proto']).split(',')[0].trim()==='https');
 const cookie=(value,req,age=SESSION_DAYS*24*60*60)=>`tc_session=${value}; Path=/api/v1; HttpOnly; SameSite=Strict; Max-Age=${age}${secure(req)?'; Secure':''}`;
@@ -19,11 +19,11 @@ function userFor(req){const token=parseCookies(req.headers.cookie||'').tc_sessio
 function auth(user){must(user,'Please sign in to continue',401);return user;}
 function role(user,wanted){auth(user);must(wanted.includes(user.role),'You do not have permission for this action',403);return user;}
 function canMessage(user,tripId){auth(user);if(user.role==='admin')return true;if(one('SELECT 1 FROM trips WHERE id=? AND driver_id=?',tripId,user.id))return true;return Boolean(one("SELECT 1 FROM bookings WHERE trip_id=? AND passenger_id=? AND status='reserved'",tripId,user.id));}
-function rawTrip(row){if(!row)return null;const driver=row.driver||row.driver_name||'Driver';return {id:row.id,driver,initials:driver.split(/\s+/).slice(0,2).map(v=>v[0]).join('').toUpperCase(),from:row.from_city,to:row.to_city,date:row.date,depart:row.depart,arrive:row.arrive,price:row.price,seats:row.seats_left,totalSeats:row.seats_total,vehicle:row.vehicle,pickup:row.pickup,dropoff:row.dropoff,status:row.status,verified:true,ac:false,luggage:false,rating:'—',reviews:0,driverId:row.driver_id};}
-const TRIP_QUERY='SELECT t.*,u.name AS driver FROM trips t JOIN users u ON u.id=t.driver_id';
+function rawTrip(row){if(!row)return null;const driver=row.driver||row.driver_name||'Driver';return {id:row.id,driver,initials:driver.split(/\s+/).slice(0,2).map(v=>v[0]).join('').toUpperCase(),from:row.from_city,to:row.to_city,date:row.date,depart:row.depart,arrive:row.arrive,price:row.price,seats:row.seats_left,totalSeats:row.seats_total,vehicle:row.vehicle,pickup:row.pickup,dropoff:row.dropoff,status:row.status,verified:true,ac:false,luggage:false,rating:'—',reviews:0,driverId:row.driver_id,vehiclePhotoUrl:row.has_vehicle_photo?`/api/v1/drivers/${row.driver_id}/vehicle-photo`:null};}
+const TRIP_QUERY='SELECT t.*,u.name AS driver,(u.vehicle_photo_mime IS NOT NULL) AS has_vehicle_photo FROM trips t JOIN users u ON u.id=t.driver_id';
 const limits=new Map();
 function throttle(req,type,max,windowMs){const ip=String(req.headers['x-forwarded-for']&&process.env.TRUST_PROXY==='1'?req.headers['x-forwarded-for'].split(',')[0]:req.socket.remoteAddress||'unknown');const key=type+':'+ip;const now=Date.now();let item=limits.get(key);if(!item||now-item.start>windowMs){item={start:now,count:0};limits.set(key,item)}must(++item.count<=max,'Too many attempts. Please try again later.',429);if(limits.size>5000){for(const [k,v] of limits){if(now-v.start>windowMs)limits.delete(k)}}}
-async function bodyJSON(req){let size=0,chunks=[];for await(const chunk of req){size+=chunk.length;if(size>16000)throw new ApiError(413,'Request body is too large');chunks.push(chunk)}try{let data=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');must(data&&typeof data==='object'&&!Array.isArray(data),'Expected an object');return data}catch(err){if(err instanceof ApiError)throw err;throw new ApiError(400,'Invalid JSON body')}}
+async function bodyJSON(req,maxBytes=16000){let size=0,chunks=[];for await(const chunk of req){size+=chunk.length;if(size>maxBytes)throw new ApiError(413,'Request body is too large');chunks.push(chunk)}try{let data=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');must(data&&typeof data==='object'&&!Array.isArray(data),'Expected an object');return data}catch(err){if(err instanceof ApiError)throw err;throw new ApiError(400,'Invalid JSON body')}}
 function requireSameOrigin(req){
  // Prevent cross-site form and scripted writes; the custom header forces a CORS preflight for other origins.
  must(req.headers['x-travelconnect-client']==='web','Missing API request header',403);
@@ -32,6 +32,31 @@ function requireSameOrigin(req){
  if(req.method!=='DELETE')must(String(req.headers['content-type']||'').split(';')[0].trim()==='application/json','Send JSON requests',415);
 }
 function ensureTripInput(v){const cities=['Johannesburg','Durban','Pretoria','Polokwane','Cape Town','Stellenbosch','Bloemfontein','Mbombela','Pietermaritzburg','Gqeberha'];const from=safeString(v.from,80),to=safeString(v.to,80);must(cities.includes(from)&&cities.includes(to)&&from!==to,'Choose two different supported cities');const date=validateDate(v.date),depart=validateTime(v.depart);const now=nowJohannesburg();must(date>now.date||(date===now.date&&depart>now.time),'Departure time must be in the future');const price=integer(v.price,1,50000,'Price per seat'),seats=integer(v.seats,1,8,'Available seats');const vehicle=safeString(v.vehicle,80);must(vehicle.length>=3,'Provide your vehicle description');const pickup=safeString(v.pickup,120)||'Pickup details in trip chat',dropoff=safeString(v.dropoff,120)||'Drop-off details in trip chat';return {from,to,date,depart,price,seats,vehicle,pickup,dropoff};}
+
+function parseCarPhoto(value){
+ must(typeof value==='string' && value.length<=1250000,'Choose a car photo smaller than 850 KB');
+ const match=/^data:(image\/jpeg|image\/png|image\/webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
+ must(match,'Use a JPEG, PNG or WebP image of your actual vehicle');
+ const bytes=Buffer.from(match[2],'base64');
+ must(bytes.length>=50&&bytes.length<=850000,'Car photo must be between 50 bytes and 850 KB');
+ const mime=match[1];
+ const jpeg=mime==='image/jpeg'&&bytes.length>4&&bytes[0]===255&&bytes[1]===216&&bytes[2]===255;
+ const png=mime==='image/png'&&bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
+ const webp=mime==='image/webp'&&bytes.subarray(0,4).toString()==='RIFF'&&bytes.subarray(8,12).toString()==='WEBP';
+ must(jpeg||png||webp,'Car photo is not a valid JPEG, PNG or WebP file');
+ return {bytes,mime};
+}
+function parseVehicleApplication(data){
+ const make=safeString(data.vehicleMake,40),model=safeString(data.vehicleModel,40);
+ must(make.length>=2&&model.length>=2,'Enter the vehicle make and model');
+ const year=integer(data.vehicleYear,1990,new Date().getFullYear()+1,'Vehicle year');
+ const color=safeString(data.vehicleColor,30),plate=safeString(data.vehiclePlate,20).toUpperCase();
+ must(color.length>=3,'Enter the vehicle colour');
+ must(/^[A-Z0-9 \-]{2,20}$/.test(plate),'Enter a valid vehicle registration number');
+ const seats=integer(data.vehicleSeats,1,8,'Passenger seats');
+ const photo=parseCarPhoto(data.vehiclePhoto);
+ return {make,model,year,color,plate,seats,photo,vehicle:(make+' '+model+' '+year).slice(0,80)};
+}
 function checkTripPublishStatus(user){role(user,['driver']);must(user.driver_status==='approved','Driver account needs manual administrator approval before publishing trips',403)}
 export async function api(req,res,url){const method=req.method||'GET',pathname=url.pathname;
  if(!pathname.startsWith('/api/v1/'))return false;
@@ -53,6 +78,17 @@ export async function api(req,res,url){const method=req.method||'GET',pathname=u
   const tripDetail=pathname.match(/^\/api\/v1\/trips\/([0-9a-f-]{36})$/);
   if(method==='GET'&&tripDetail){const row=one(`${TRIP_QUERY} WHERE t.id=? AND t.status='published' AND u.driver_status='approved'`,tripDetail[1]);must(row,'Journey not found',404);return send(res,200,{data:rawTrip(row)})}
   const user=userFor(req);
+  const photoRequest=pathname.match(/^\/api\/v1\/drivers\/([0-9a-f-]{36})\/vehicle-photo$/);
+  if(method==='GET'&&photoRequest){
+   const owner=one("SELECT id,role,driver_status,vehicle_photo,vehicle_photo_mime FROM users WHERE id=?",photoRequest[1]);
+   must(owner&&owner.vehicle_photo&&owner.vehicle_photo_mime,'Vehicle photo unavailable',404);
+   const selfOrAdmin=Boolean(user&&(user.id===owner.id||user.role==='admin'));
+   const publicDriver=owner.role==='driver'&&owner.driver_status==='approved'&&Boolean(one("SELECT 1 FROM trips WHERE driver_id=? AND status='published' LIMIT 1",owner.id));
+   must(selfOrAdmin||publicDriver,'Vehicle photo is private until the driver is approved',403);
+   res.writeHead(200,{'Content-Type':owner.vehicle_photo_mime,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Content-Disposition':'inline'});
+   res.end(owner.vehicle_photo);
+   return true;
+  }
   if(method==='GET'&&pathname==='/api/v1/auth/me')return send(res,200,{user:redact(user)});
   if(method==='GET'&&pathname==='/api/v1/ai/status')return send(res,200,await aiService.status());
   if(method==='GET'&&pathname==='/api/v1/auth/firebase/config')return send(res,200,{enabled:firebaseVerifier.enabled,config:firebaseVerifier.publicConfig});
@@ -62,7 +98,7 @@ export async function api(req,res,url){const method=req.method||'GET',pathname=u
    return send(res,200,{data:await publicFirebaseDiagnostics(hostname)});
   }
   if(['POST','PATCH','PUT','DELETE'].includes(method))requireSameOrigin(req);
-  const data=['POST','PATCH','PUT'].includes(method)?await bodyJSON(req):{};
+  const data=['POST','PATCH','PUT'].includes(method)?await bodyJSON(req,pathname==='/api/v1/driver/apply'?1350000:16000):{};
   if(method==='POST'&&pathname==='/api/v1/ai/ask'){
    auth(user);throttle(req,'ai',12,10*60*1000);
    try{return send(res,200,{data:await aiService.ask(data.question)});}catch(error){const failure=new ApiError(error.status||503,error.message);if(error.safeClientMessage)failure.safeClientMessage=error.safeClientMessage;throw failure;}
@@ -135,8 +171,11 @@ export async function api(req,res,url){const method=req.method||'GET',pathname=u
   }
   if(method==='POST'&&pathname==='/api/v1/driver/apply'){
    auth(user);must(user.role==='passenger'||user.role==='driver','Admin accounts cannot apply as drivers',403);must(user.driver_status!=='approved','Your driver account is already approved',409);
-   const vehicle=safeString(data.vehicle,80);must(vehicle.length>=3,'Enter a vehicle description');
-   db.prepare("UPDATE users SET role='driver',driver_status='pending',vehicle=? WHERE id=?").run(vehicle,user.id);audit(user.id,'driver.apply');
+   throttle(req,'driver-photo',12,60*60*1000);
+   const v=parseVehicleApplication(data);
+   db.prepare("UPDATE users SET role='driver',driver_status='pending',vehicle=?,vehicle_make=?,vehicle_model=?,vehicle_year=?,vehicle_color=?,vehicle_seats=?,vehicle_plate=?,vehicle_photo=?,vehicle_photo_mime=? WHERE id=?")
+     .run(v.vehicle,v.make,v.model,v.year,v.color,v.seats,v.plate,v.photo.bytes,v.photo.mime,user.id);
+   audit(user.id,'driver.apply');
    return send(res,200,{user:redact(one(`SELECT ${USER_FIELDS} FROM users WHERE id=?`,user.id)),notice:'Application saved for manual administrator review. This does not certify documents or licences.'});
   }
   if(method==='GET'&&pathname==='/api/v1/driver/trips'){
@@ -210,6 +249,7 @@ export async function api(req,res,url){const method=req.method||'GET',pathname=u
   }
   const review=pathname.match(/^\/api\/v1\/admin\/drivers\/([0-9a-f-]{36})\/(approve|reject)$/);
   if(method==='POST'&&review){role(user,['admin']);const driverId=review[1],action=review[2];must(one("SELECT 1 FROM users WHERE id=? AND role='driver' AND driver_status='pending'",driverId),'Pending driver application not found',404);
+   if(action==='approve')must(one('SELECT 1 FROM users WHERE id=? AND vehicle_photo IS NOT NULL AND vehicle_make!=\'\' AND vehicle_model!=\'\'',driverId),'Driver must supply vehicle details and a car photo before approval',409);
    // Human administrator must verify legal documentation out of band before approving.
    db.prepare('UPDATE users SET driver_status=? WHERE id=?').run(action==='approve'?'approved':'rejected',driverId);audit(user.id,'driver.'+action,driverId);return send(res,200,{ok:true,disclaimer:'Admin status indicates manual internal review, not external identity or licence certification.'});
   }
