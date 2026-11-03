@@ -1,57 +1,50 @@
-# TravelConnect — make Google sign-in work
+# TravelConnect Google sign-in — Firebase project: travelconnect-f359e
 
-The Google button is implemented using Firebase Authentication and TravelConnect's server-side ID-token verification. **A live login will fail until your own Firebase web configuration is correct.** This guide does not require sharing your API key or password.
+## Current setup
 
-## 1. Fix the mismatch shown by TravelConnect
+TravelConnect already includes the **public Firebase Web app configuration** you provided, in `server/firebase-public-config.mjs`. Its values are used by both browser sign-in and server-side Firebase ID-token verification. The old `TC_FIREBASE_*` variables in your Mac's private `.env` are **ignored by default**, so an earlier wrong project key no longer takes precedence.
 
-Your earlier login screen reported: **"The API key belongs to a different Firebase project than TC_FIREBASE_PROJECT_ID."**
+The bundled config uses:
+- **Project ID:** `travelconnect-f359e`
+- **Auth domain:** `travelconnect-f359e.firebaseapp.com`
+- **Web app ID:** `1:276817834548:web:bd903dfab8ea6562ccd061`
 
-In [Firebase Console](https://console.firebase.google.com/), open the **single** Firebase project you want TravelConnect to use, then **Project settings → General → Your apps → Web app → SDK setup and configuration**. Copy all five values from the **same web app** into `TravelConnect-MVP/.env`:
+These are Firebase's **public Web app identifiers**, not service-account private credentials. Never add a Firebase service-account private key to GitHub.
 
-```dotenv
-TC_FIREBASE_PROJECT_ID=projectId
-TC_FIREBASE_API_KEY=apiKey
-TC_FIREBASE_AUTH_DOMAIN=authDomain
-TC_FIREBASE_APP_ID=appId
-TC_FIREBASE_MESSAGING_SENDER_ID=messagingSenderId
-```
+## What to configure in Firebase Console
 
-Replace the text after `=` with the actual value for that property. Don't type the literal placeholder names. Your `authDomain` typically ends in `.firebaseapp.com`. A Web API key is a public Firebase app identifier, **not a Firebase service account secret**, but `.env` must still stay private because it can contain other keys.
+1. In [Firebase Console](https://console.firebase.google.com/), open **travelconnect-f359e**.
+2. Select **Authentication → Sign-in method**. Enable **Google**, select the required support email and **Save**.
+3. Select **Authentication → Settings → Authorized domains**. For local testing, add `localhost` if it isn't present. Do not include `http://` or port `:5500`.
+4. Later, authorize your **real HTTPS production domain** too.
 
-**Do not change only the project ID to make an unrelated key appear valid.** Copy the entire configuration from one project.
+**Google provider enablement and the authorized domain are project-side actions that this GitHub repository cannot perform.** A successful automatic syntax test does not confirm live Google OAuth.
 
-## 2. Enable Google Authentication
+## Update your Mac and test
 
-In the same project:
-
-1. Go to **Authentication → Sign-in method**. Enable **Google** and save.
-2. Go to **Authentication → Settings → Authorized domains**. Add **localhost** for local development, if missing. Do not include `http://` or `:5500`.
-3. When hosting, add your **real hosting domain** to Authorized domains.
-
-Firebase projects created after April 28, 2025 may not include `localhost` by default.
-
-## 3. Diagnose and test
-
-Stop the server with **Control + C**. In VS Code Terminal:
+Stop the currently running server with **Control+C**, then:
 
 ```bash
-cd ~/TravelConnect/TravelConnect-MVP
+cd ~/TravelConnect
+git pull --ff-only origin main
+cd TravelConnect-MVP
+npm run check
+npm test
 npm run firebase:check
+npm run doctor
 npm run dev
 ```
 
-The first command may print project IDs and problem descriptions; it does **not** print the API key. Fix any reported mismatch or blocked domain.
+Visit `http://localhost:5500/#auth` in a **normal Chrome tab**, not an installed PWA window. Click **Continue with Google** and complete the real popup. The backend exchanges a verified Firebase token for a TravelConnect HttpOnly session.
 
-Then visit **http://localhost:5500/#auth** in a normal Chrome tab (not the installed PWA) and click **Continue with Google**.
+`npm run firebase:check` prints the public project ID, domain and diagnostics, **not the API key**. If it says `localhost` is unauthorized or the Google provider is disabled, correct the Firebase Console settings above.
 
-If a Google popup appears, choose an account and finish the sign-in. TravelConnect exchanges the Firebase ID token for an HttpOnly login session on its own server. If the popup is blocked, allow popups and retry. If it still fails, inspect the browser console's Firebase error *code*; never share ID tokens or secrets.
+## If you later switch Firebase projects
 
-## 4. Account safety
+By default, `server/firebase-public-config.mjs` is authoritative to prevent stale Mac `.env` values from accidentally mixing two projects. To deliberately use another project, set `TC_FIREBASE_USE_ENV=1` and supply **all five matching** `TC_FIREBASE_*` values in your private `.env` before restarting. Don't mix configuration from two Firebase projects.
 
-- New Google sign-ins create **ordinary passenger accounts**. They never become administrators automatically.
-- If an email/password user already uses that Google email, first sign in using the existing password, then link Google from the **Profile** page.
-- Your existing administrator account and SQLite data remain unchanged.
+## Account protection
 
-## Still not live
+New Google users start as **passengers**. An existing password-based account with the same email is **not automatically taken over or promoted**. Sign in with the existing password and link the matching verified Google account on the Profile screen. Your existing administrator account remains in SQLite.
 
-Google authentication can become live after you fix the settings above. Payments, external driver identity verification, and live GPS still require their own provider integrations and launch checks. Working unit tests do not prove those services are live.
+The app is still under development: Google sign-in, even when active, doesn't enable payments, live GPS or automatic driver verification.
