@@ -1,13 +1,15 @@
 {
   "name": "travelconnect",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "TravelConnect responsive website and installable PWA MVP",
+  "description": "TravelConnect multi-user web application + PWA with SQLite backend",
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "start": "node scripts/dev.mjs",
-    "check": "node --check web/app.js && node --check scripts/dev.mjs"
+    "admin:create": "node scripts/create-admin.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check web/app.js && node --check scripts/dev.mjs && node --check server/api.mjs && node --check server/db.mjs"
   },
-  "engines": {"node": ">=18"}
+  "engines": {"node": ">=22.13.0"}
 }

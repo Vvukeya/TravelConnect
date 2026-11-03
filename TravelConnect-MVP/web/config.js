@@ -1,3 +1,3 @@
-// Leave blank for the fully interactive offline/local demo.
-// When the Laravel backend is running, set e.g. 'http://127.0.0.1:8000/api/v1'.
-window.TRAVELCONNECT_API_BASE = '';
+// TravelConnect v0.2 is served from the same origin as its authenticated REST API.
+// Keep API requests on /api/v1 so HttpOnly session cookies work without CORS.
+window.TRAVELCONNECT_API_BASE = '/api/v1';

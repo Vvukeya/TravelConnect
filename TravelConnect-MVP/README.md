@@ -1,104 +1,117 @@
-# TravelConnect — website + installable PWA + Laravel backend starter
+# TravelConnect — database-backed website and installable PWA (v0.2)
 
-**Every Journey Connects Us.** A responsive South African long-distance ride-sharing prototype that runs as a desktop website and as an installable Progressive Web App (PWA) on compatible phones.
+**Every Journey Connects Us.** This is a **working, locally testable multi-user foundation** for a South African journey-sharing platform. It is **NOT ready to accept paying passengers or support real-world safety operations** yet. Read [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md) before hosting for public use.
 
-> **Important:** This repository is an MVP **demonstration**, not a production transport marketplace. All default drivers, ratings, seat counts, schedules and prices are illustrative. Bookings, messages and driver posts stay in the browser's `localStorage`; no real seats are held, no money is collected, no live GPS is tracked, and no emergency service is contacted. The optional Laravel starter provides a database-backed *sample read-only* trips API. Real booking operations must be built behind authenticated, verified backend endpoints.
+## What really works in v0.2
 
-## Start in VS Code in under a minute
+- Users can **register, sign in, sign out and edit their profiles**. Passwords are salted and hashed with `scrypt`. Login uses opaque, server-side sessions in HttpOnly cookies.
+- Passengers can see **real journeys published to the shared database**, book available seats, view bookings from other devices and cancel upcoming reservations.
+- Seat inventory updates in an **atomic SQLite transaction**. Overbooking requests return an error; repeated booking requests with the same request ID do not take additional seats.
+- Users can apply to become drivers. A manually bootstrapped administrator can review applications and approve/reject them. Only approved drivers can publish public journeys.
+- Approved drivers can publish and view trips, see passenger reservations, message their booked passengers, and cancel trips *without* active reservations.
+- Members of a booked journey can exchange **server-stored private trip messages**. Press **Refresh messages** to fetch new ones; this is not WebSocket live chat.
+- The PWA and responsive website use the same backend over same-origin `/api/v1` REST endpoints. Accounts, trips and bookings persist in the SQLite database file instead of a browser's localStorage.
+- Automated tests cover authentication, roles, publication, inventory, cancellation, idempotency, message permissions, security headers and frontend route rendering.
 
-From the extracted project folder in VS Code, if you have Node.js installed:
+**Not included:** real payment processing, live GPS, professional document verification, weather feeds, third-party TripAI, Google sign-in, email/phone verification, password recovery, emergency dispatch, push notifications, trusted-contact sharing and legal compliance certification. Those require real providers, credentials, user consent, and production validation. No money is collected; reservation fares are displayed only.
+
+## 1. Run it in VS Code on your Mac
+
+Your files are located in `~/TravelConnect/TravelConnect-MVP` when you have copied this update into your existing Git clone.
+
+1. Stop the old server with **Control + C** in its terminal.
+2. Open a terminal inside VS Code and run:
 
 ```bash
-cd TravelConnect-MVP
+cd ~/TravelConnect/TravelConnect-MVP
+node -v
+npm run check
+npm test
 npm run dev
 ```
 
-Alternatively, use Python:
+3. Open **http://localhost:5500** in Chrome.
+
+The frontend and API now start together on port **5500**. Node.js **22.13+** is required. Your current Node 26 installation is suitable. There are **no npm dependencies to install** for this MVP. On Node 22, `node:sqlite` may print an experimental feature warning, although the tests run successfully.
+
+If a previous PWA version appears, refresh the page twice or use Chrome **Cmd + Shift + R** so the updated service worker can activate.
+
+## 2. Set up your own administrator account
+
+In a **second Terminal** window, stop the web server or keep it running; either is fine. Choose an email and a *unique* strong password. On your Mac using zsh:
 
 ```bash
-python3 -m http.server 5500 --directory web
+cd ~/TravelConnect/TravelConnect-MVP
+export TC_ADMIN_EMAIL='you@example.com'
+read -s 'TC_ADMIN_PASSWORD?Set a strong admin password: '
+export TC_ADMIN_PASSWORD
+npm run admin:create
+unset TC_ADMIN_PASSWORD
 ```
 
-Open **http://localhost:5500** in your browser. Edit `web/app.js`, `web/styles.css`, and `web/index.html` in VS Code; refresh to preview changes.
+**Replace** `you@example.com` with your administrator email. The password is entered invisibly. An administrator can only be created using this local/secure server command, not through public registration. Create it **once** on the actual deployed database as well. Never commit passwords or administrative data to GitHub.
 
-If you don't have Python, another local static HTTP server works too (VS Code Live Server, `npx serve web`, etc.). Opening `index.html` directly as `file://` is not recommended because the PWA service worker won't run.
+Admin permissions are separate from passenger and driver accounts. If a registered account already uses the admin email, the script will refuse to upgrade it silently; use a new dedicated admin email.
 
-## Use on your phone
+## 3. Test the multi-user flow
 
-Deploy the `web/` directory to a HTTPS static host (for example GitHub Pages or another service of your choice). Open the deployed link on Android/Chrome and use the browser's **Install app** action, or on iOS/Safari choose **Share → Add to Home Screen** if supported. The mobile and desktop views share the same code and responsive styling. PWA installation requires HTTPS or an eligible localhost origin; installing on a phone from a Mac's local dev server generally requires HTTPS hosting.
+Open a normal and an incognito browser window to simulate separate people:
 
-## Features included
+1. **Driver browser:** create a regular account, open **Drive**, and apply using a vehicle description.
+2. **Admin browser:** sign in with the administrator account, open **Profile → Admin console**, inspect the application and approve only after independently reviewing required documents and compliance.
+3. **Driver browser:** open Drive and press **Check approval status**, then publish a journey for tomorrow (for example Johannesburg to Durban, 3 seats).
+4. **Passenger browser:** register a different account, search the same date and route, choose a driver and reserve 1–2 seats. Open **My trips**.
+5. **Driver browser:** open the dashboard. The booking appears under passenger reservations; open **Message**.
+6. **Passenger browser:** open the journey and its messages; send a message. Use **Refresh messages** on the other browser to retrieve it.
+7. **Passenger browser:** cancel the reservation. Search again and verify that the available-seat count increased.
 
-- Responsive home page, hero design, route discovery, search and filters.
-- Search results, driver cards, journey details and fare summary.
-- Booking confirmation flow saving **sample** bookings locally.
-- My trips, illustrative route tracking screen, demo trip chat.
-- TripAI demo interface with deterministic, clearly labelled sample replies.
-- Driver dashboard with an example journey publishing form; no online publication or verification.
-- Administrative preview dashboard.
-- Editable display name and profile, PWA icons, manifest and service worker.
-- Route options for several South African cities.
+Public journeys **start empty**. This is intentional: the app will not invent live drivers, trips, ratings or availability. The original screenshot/demo data has been removed from the online reservation list.
 
-## Connect a Laravel / MySQL starter API
+## 4. Where data lives
 
-For real persistence and future mobile API access, the `backend-overlay/` folder contains a small Laravel API scaffold (model, migration, seed, controller, API routes). To create the Laravel application, first install **PHP 8.2+** and **Composer** on your Mac:
+SQLite file (default):
+
+```text
+TravelConnect-MVP/data/travelconnect.sqlite
+```
+
+This path is excluded from GitHub through `.gitignore`. Do not delete it if you want to keep accounts and reservations. On a hosted server the database directory **must be on persistent storage**. A temporary/free ephemeral filesystem may erase user data after redeployments or restarts.
+
+The app uses SQLite transactions and WAL mode. It is appropriate for a single-server initial pilot, not a high-scale multi-replica production setup. The project master specification targets **Laravel/PHP + MySQL**. That migration is **not implemented** in v0.2; the older `backend-overlay/` remains as reference-only starter files and does not serve the current frontend.
+
+## 5. Hosting later — not public launch-ready
+
+This build must run on a host that supports **Node.js 22.13 or newer**, persistent writable storage, HTTPS and environment variables. Do **not** use a static-only hosting service for this database-backed version. It will not work if you only upload `web/` to GitHub Pages.
+
+For a single-instance trial behind a correctly configured HTTPS reverse proxy:
 
 ```bash
-bash scripts/setup-backend.sh
+HOST=0.0.0.0 PORT=8080 TC_DATA_DIR=/path/to/persistent/disk node scripts/dev.mjs
 ```
 
-Then edit `backend/.env` with your MySQL database credentials. For local-only experimentation, Laravel's default SQLite setup is also possible; configure it in `.env` and create the database if required.
+Configure the proxy to preserve `Host` and terminate TLS; only set `TRUST_PROXY=1` if the proxy is under your control and sanitises `X-Forwarded-Proto`. Secure cookies are set on HTTPS connections. Set up **daily database backups**, monitoring and a recovery plan before accepting users. Do not publicly expose this test server or use genuine passenger data until launch requirements are met.
 
-Run:
+## 6. GitHub workflow
+
+Your existing repository is [Vvukeya/TravelConnect](https://github.com/Vvukeya/TravelConnect) and it already has a `TravelConnect-MVP` folder. **Do not run `git init` again.** Extract the updated ZIP *at the repository root*, replacing `TravelConnect-MVP` files. Then:
 
 ```bash
-cd backend
-php artisan migrate
-php artisan db:seed --class=TravelConnectDemoSeeder
-php artisan serve
+cd ~/TravelConnect
+cd TravelConnect-MVP
+npm run check && npm test
+cd ..
+git status
+git add TravelConnect-MVP
+git commit -m "Add TravelConnect authenticated booking platform"
+git push origin main
 ```
 
-API endpoints (all **sample** data):
+Your actual database, passwords, credentials and `.env` files will remain ignored by Git. Check the `git status` output before pushing.
 
-- `GET http://127.0.0.1:8000/api/v1/health`
-- `GET http://127.0.0.1:8000/api/v1/trips`
-- `GET http://127.0.0.1:8000/api/v1/trips?from=Johannesburg&to=Durban&date=YYYY-MM-DD`
-- `GET http://127.0.0.1:8000/api/v1/trips/1`
+## 7. Security notes
 
-To read backend sample trips in the web frontend, set `window.TRAVELCONNECT_API_BASE` in `web/config.js` to `'http://127.0.0.1:8000/api/v1'`, and serve the `web/` directory from its own terminal. You may need appropriate CORS configuration to connect different localhost ports, and the phone must use a network-accessible HTTPS API instead of `127.0.0.1`.
+The server includes password hashing, account roles, server sessions, SQL parameter binding, transactional inventory, API input limits, same-origin write checks and basic per-IP throttling. This is a foundation, **not a substitute for an independent penetration test or deployment security review**. See the launch checklist for password recovery, email verification, moderation, rate limits across multiple servers, audit logging, provider integration and privacy requirements.
 
-The frontend uses seeded sample journeys if the backend is not configured or is unavailable. **Booking submissions do not use the backend yet.** Treat the API and database layer as a foundation for the next milestone, not a complete authenticated booking platform.
+## Design reference
 
-## Suggested GitHub workflow
-
-Your connected GitHub username is `Vvukeya`. The repository `TravelConnect` does not yet exist; create a new **empty repository** named `TravelConnect` on GitHub first (do not initialize it with a README). Then, from this extracted project folder:
-
-```bash
-git init
-git add .
-git commit -m "Initial TravelConnect website and PWA MVP"
-git branch -M main
-git remote add origin https://github.com/Vvukeya/TravelConnect.git
-git push -u origin main
-```
-
-On another computer or after it has been pushed:
-
-```bash
-git clone https://github.com/Vvukeya/TravelConnect.git
-cd TravelConnect
-code .
-```
-
-> Do **not** commit `backend/.env`, credentials, payment API keys, or personal verification documents. `.gitignore` excludes the Laravel `.env` file and dependencies.
-
-## Next development milestones
-
-1. Registration/login, verified driver workflow, policies and role-based authorization.
-2. Authenticated bookings with real inventory constraints, transaction handling and cancellation rules.
-3. Live trip chat, route matching, consent-based GPS sharing and verified safety flows.
-4. Payment integration with hosted checkout and verified webhooks—never raw payment cards.
-5. Real TripAI and weather API integration, including provenance and usage limits.
-6. Production testing, POPIA privacy controls, required transport licences and accessibility review.
-
-**Tech choices:** HTML/CSS/JavaScript PWA (no frontend build step), optional Laravel PHP REST API and MySQL, shared API for future dedicated Android/iOS clients.
+Editable Figma file: [TravelConnect Prototype](https://www.figma.com/design/dZQ1VTCp5BbpFlWMKmnky0). The source code runs independently of Figma.

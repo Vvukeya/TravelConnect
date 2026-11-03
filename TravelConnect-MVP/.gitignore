@@ -1,0 +1,19 @@
+.DS_Store
+.idea/
+.vscode/
+node_modules/
+backend/vendor/
+backend/.env
+backend/storage/*.key
+backend/storage/logs/*.log
+backend/bootstrap/cache/*.php
+!backend/bootstrap/cache/.gitignore
+*.zip
+# Persisted user data must never be committed
+data/
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
