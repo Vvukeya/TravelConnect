@@ -4,6 +4,8 @@ console.log('TravelConnect Firebase public-config check (no keys or tokens print
 console.log('  Project:',result.projectId||'(missing)');
 console.log('  Domain:',result.hostname);
 console.log('  Result:',result.status);
+console.log('  API key / project identity:',result.projectIdentityCheck||'not verified');
+console.log('  localhost authorized:',result.authorizedDomainCheck||'not verified');
 for(const issue of result.issues||[])console.log('  Check:',issue);
 console.log('  Google provider: not verifiable via public project settings; confirm Authentication → Sign-in method → Google');
 if(result.help)console.log('  Next:',result.help);
