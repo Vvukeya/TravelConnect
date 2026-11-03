@@ -18,7 +18,7 @@ test('Firebase setup accepts localhost when the public project is consistent',as
 });
 test('Firebase setup reports wrong project and blocked credentials safely',async()=>{
  const wrong=await inspectFirebase({...base,fetchImpl:reply(200,{projectId:'different',authorizedDomains:['localhost']})});
- assert.equal(wrong.ready,false);assert.match(wrong.issues.join(' '),/different Firebase project/);
+ assert.equal(wrong.ready,false);assert.match(wrong.issues.join(' '),/Web API key belongs/);assert.match(wrong.issues.join(' '),/different/);assert.match(wrong.issues.join(' '),/tc-test/);
  const blocked=await inspectFirebase({...base,fetchImpl:reply(403,{error:{message:'API_KEY_SERVICE_BLOCKED: key public-fixture'}})});
  assert.equal(blocked.status,'rejected');assert.match(blocked.issues.join(' '),/restriction/);
  assert.doesNotMatch(JSON.stringify(blocked),/public-fixture/);
