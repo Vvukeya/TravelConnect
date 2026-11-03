@@ -17,6 +17,7 @@ function loadState(){try{const v=JSON.parse(localStorage.getItem(STORE)||'{}');r
 const state=loadState();
 let bookingBusy=false;let aiEnabled=false, aiBusy=false, aiProvider='Ollama', aiStatusMessage='';
 let googleConfig=null, googleStatus='loading', googleSdk=null, googleBusy=false, googleDiagnostic=null;
+let pendingCarPhoto='',editingVehicle=false;
 const googleIcon='<img src="./assets/google-g.svg" width="22" height="22" alt="" loading="lazy" />';
 async function prepareGoogleSignIn(){
  try{
@@ -125,7 +126,7 @@ function driver() {
     return `<div class="container page-shell"><div class="page-heading"><div><span class="eyebrow">DRIVE WITH TRAVELCONNECT</span><h2>Register your vehicle</h2><p>Complete your vehicle details and upload a clear photograph of the actual car.</p></div></div><section class="surface driver-registration"><div class="registration-heading"><div><h3>Vehicle information</h3><p>Details should match the vehicle you will use for passenger journeys.</p></div><span class="registration-step">Registration</span></div><form id="driver-apply-form"><div class="vehicle-fields"><label class="field">Make<input name="vehicleMake" minlength="2" maxlength="40" placeholder="Toyota" value="${esc(currentUser.vehicle_make||'')" required/></label><label class="field">Model<input name="vehicleModel" minlength="2" maxlength="40" placeholder="Corolla" value="${esc(currentUser.vehicle_model||'')" required/></label><label class="field">Year<input type="number" name="vehicleYear" min="1990" max="${new Date().getFullYear()+1" placeholder="2022" value="${esc(currentUser.vehicle_year||'')" required/></label><label class="field">Colour<input name="vehicleColor" minlength="3" maxlength="30" placeholder="Silver" value="${esc(currentUser.vehicle_color||'')" required/></label><label class="field">Passenger seats<input type="number" name="vehicleSeats" min="1" max="8" placeholder="3" value="${esc(currentUser.vehicle_seats||'')" required/></label><label class="field">Registration number (private)<input name="vehiclePlate" maxlength="20" placeholder="Your vehicle registration" value="${esc(currentUser.vehicle_plate||'')" required/></label></div><div class="vehicle-upload"><h3>Car photograph</h3><p class="muted">Upload a clear exterior photo of your actual vehicle, not an ID document or stock image.</p><label class="vehicle-upload-drop" for="car-photo-file"><span class="upload-symbol">▧</span><strong>Select a picture of the car</strong><small>JPEG, PNG or WebP · max 8 MB · automatically resized</small></label><input type="file" id="car-photo-file" accept="image/jpeg,image/png,image/webp" required/><img id="car-photo-preview" class="car-photo-preview" alt="Preview of the selected vehicle image" hidden/><p id="car-photo-status" class="muted">The picture is securely stored and reviewed before being shown to passengers.</p></div><button class="button full" type="submit">Submit for review →</button><p class="registration-note">Driver permits, licensing, insurance and vehicle compliance must be checked independently before approval.</p></form></section></div>`;
   }
   if(currentUser.role==='admin') return `<div class="container page-shell"><section class="surface"><h2>Administrator</h2>${btn('Open admin dashboard','admin')}</section></div>`;
-  if(currentUser.driver_status!=='approved') return `<div class="container page-shell"><div class="page-heading"><h2>Driver application awaiting review</h2></div><section class="surface"><p>Your application is <strong>${esc(currentUser.driver_status)}</strong>. Only approved drivers can publish journeys.</p><button class="button secondary" data-action="refresh-account" style="margin-top:18px">Check approval status</button></section></div>`;
+  if(currentUser.driver_status!=='approved') return `<div class="container page-shell"><div class="page-heading"><h2>Application under review</h2><p>Your vehicle information has been submitted to TravelConnect for review.</p></div><section class="surface driver-application-status"><div><h3>${esc(currentUser.vehicle||'Vehicle')</h3><p class="muted">${esc(currentUser.vehicle_color||'') · ${esc(currentUser.vehicle_seats||'—') passenger seats · Status: ${esc(currentUser.driver_status)</p><p class="muted">Only approved drivers can publish journeys. Vehicle and driver documents must be verified separately.</p><div class="buttons"><button class="button secondary" data-action="refresh-account">Check status</button><button class="button secondary" data-action="edit-vehicle">Edit vehicle details</button></div></div>${currentUser.vehiclePhotoUrl?`<img src="${esc(currentUser.vehiclePhotoUrl)" class="status-car-photo" alt="Photo of your registered vehicle" loading="lazy"/>`:''</section></div>`;
   const metrics = [
     [driverTrips.filter(v=>v.status==='published').length,'Active journeys','Visible to passengers'],
     [driverBookings.filter(v=>v.status==='reserved').length,'Reservations','Stored in the database'],
@@ -202,13 +203,22 @@ document.addEventListener('submit',async event=>{
    currentUser=result.user;state.profile.name=result.user.name;state.profile.phone=result.user.phone||'';notify(isSignup?'Account created successfully':'Signed in successfully');go(afterLogin||'search');return;
   }
   if(form.id==='profile-form'){const result=await apiFetch('/auth/me',{method:'PATCH',body:JSON.stringify(d)});currentUser=result.user;state.profile.name=currentUser.name;state.profile.phone=currentUser.phone;render();notify('Profile saved in the database');return;}
-  if(form.id==='driver-apply-form'){const r=await apiFetch('/driver/apply',{method:'POST',body:JSON.stringify(d)});currentUser=r.user;go('driver');notify('Application submitted for manual review');return;}
+  if(form.id==='driver-apply-form'){if(!pendingCarPhoto)throw Error('Please choose a clear photo of your actual vehicle.');d.vehiclePhoto=pendingCarPhoto;const r=await apiFetch('/driver/apply',{method:'POST',body:JSON.stringify(d)});currentUser=r.user;pendingCarPhoto='';editingVehicle=false;go('driver');notify('Vehicle application submitted for review');return;}
   if(form.id==='publish-form'){if(!requireAuth('driver'))return;const r=await apiFetch('/driver/trips',{method:'POST',body:JSON.stringify(d)});notify('Journey published to TravelConnect');await refreshDriver();await refreshTrips();return;}
   if(form.id==='chat-form'){if(!chatTripId)return;await apiFetch(`/trips/${encodeURIComponent(chatTripId)}/messages`,{method:'POST',body:JSON.stringify({message:d.message})});await refreshMessages();return;}
   if(form.id==='ai-form'){if(d.question?.trim())await sendAI(String(d.question).trim());return;}
  }catch(err){notify(err.message)}
 });
 document.addEventListener('change',event=>{
+ if(event.target.id==='car-photo-file'){
+   const file=event.target.files?.[0];pendingCarPhoto='';
+   if(file)void import('./vehicle-photo.js').then(m=>m.compressVehiclePhoto(file)).then(photo=>{
+     pendingCarPhoto=photo;
+     const preview=document.querySelector('#car-photo-preview');if(preview){preview.src=photo;preview.hidden=false;}
+     const label=document.querySelector('#car-photo-status');if(label)label.textContent='Photo ready. It will be stored with your driver application.';
+   }).catch(err=>notify(err.message));
+   return;
+ }
  if(event.target.id==='filter-price'){state.maxPrice=Number(event.target.value);save();render()}
  if(event.target.id==='filter-verified'){state.verifiedOnly=event.target.checked;save();render()}
  if(event.target.name==='filter-from'){state.search.from=event.target.value;save();render()}
@@ -226,6 +236,7 @@ document.addEventListener('click',async event=>{
   if(action==='checkout'){if(!requireAuth('checkout'))return;return go('checkout')}
   if(action==='open-auth'){afterLogin=location.hash.slice(1)||'profile';return go('auth')}
   if(action==='switch-auth'){loginMode=el.dataset.mode||'login';return render()}
+  if(action==='edit-vehicle'){editingVehicle=true;pendingCarPhoto='';return render()}
   if(action==='google-signin')return handleGoogleSignIn();
   if(action==='firebase-check')return checkGoogleConfiguration(true);
   if(action==='confirm-booking'){
